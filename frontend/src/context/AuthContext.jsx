@@ -112,19 +112,25 @@ export function AuthProvider({ children }) {
       return () => { active = false; };
     }
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || apiUrl.replace(/\/api\/?$/, '');
+    const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:5000/api');
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (apiUrl.startsWith('/') ? '' : apiUrl.replace(/\/api\/?$/, ''));
+    const refreshUnread = () => {
+      getConversations()
+        .then(({ data }) => setUnreadMessageCount(Number(data.unreadCount || 0)))
+        .catch((error) => console.error('Could not refresh the unread message count:', error.message));
+    };
+
+    if (!socketUrl) {
+      refreshUnread();
+      return () => { active = false; };
+    }
+
     import('socket.io-client')
       .then(({ io }) => {
         if (!active) return;
         connection = io(socketUrl, { autoConnect: false, auth: { token } });
         socketRef.current = connection;
         setSocket(connection);
-        const refreshUnread = () => {
-          getConversations()
-            .then(({ data }) => setUnreadMessageCount(Number(data.unreadCount || 0)))
-            .catch((error) => console.error('Could not refresh the unread message count:', error.message));
-        };
         connection.on('messages:unread_count', ({ count }) => {
           setUnreadMessageCount(Number(count || 0));
         });

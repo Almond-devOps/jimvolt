@@ -1,0 +1,53 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm ci --prefix backend && npm ci --prefix frontend",
+  "buildCommand": "npm run build --prefix frontend",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60,
+      "includeFiles": "{backend/config/schema.sql,frontend/dist/index.html}"
+    }
+  },
+  "routes": [
+    {
+      "src": "^/api(?:/(.*))?$",
+      "dest": "/api/index.js?__vercel_path=/api/$1"
+    },
+    {
+      "src": "^/uploads/(.*)$",
+      "dest": "/api/index.js?__vercel_path=/uploads/$1"
+    },
+    {
+      "src": "^/$",
+      "dest": "/api/index.js?__vercel_path=/"
+    },
+    {
+      "src": "^/ads/([^/]+)$",
+      "dest": "/api/index.js?__vercel_path=/ads/$1"
+    },
+    {
+      "src": "^/sellers/([^/]+)$",
+      "dest": "/api/index.js?__vercel_path=/sellers/$1"
+    },
+    {
+      "src": "^/seller/([^/]+)$",
+      "dest": "/api/index.js?__vercel_path=/seller/$1"
+    },
+    {
+      "src": "^/category/([^/]+)$",
+      "dest": "/api/index.js?__vercel_path=/category/$1"
+    },
+    {
+      "src": "^/(robots\\.txt|sitemap(?:-\\d+)?\\.xml)$",
+      "dest": "/api/index.js?__vercel_path=/$1"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "^/(.*)$",
+      "dest": "/index.html"
+    }
+  ]
+}

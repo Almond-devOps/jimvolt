@@ -72,7 +72,21 @@ Set `VITE_SUPPORT_EMAIL` in the frontend environment to provide the address disp
 
 ## Bachs checkout test
 
-Set `BACHS_API_KEY` in `backend/.env` to a Bachs sandbox API key, then open `/tests/bachs`. Enter a Naira amount to create a hosted checkout and redirect to Bachs. The endpoint accepts sandbox keys only and is rate limited; returning to the page does not verify payment completion.
+Set `BACHS_API_KEY` in `backend/.env` to a Bachs sandbox API key, then open `/tests/bachs`. Enter a Naira amount to create a hosted checkout and redirect to Bachs. The endpoint accepts sandbox keys only; returning to the page does not verify payment completion.
+
+## Deploy frontend and API to Vercel
+
+Import the repository as a Vercel project with the repository root as its Root Directory. The root `vercel.json` builds the Vite frontend, routes `/api/*` to an Express serverless function, preserves server-rendered SEO routes, and sends other frontend routes (including `/tests/bachs`) to the SPA. The frontend uses same-origin `/api` requests in production.
+
+Configure these values in Vercel's Environment Variables for the environments you deploy:
+
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` (`jimvolt_db`). Use a managed MySQL server reachable from Vercel, not `localhost` or the database root account.
+- `JWT_SECRET` (at least 32 characters), `FRONTEND_URL`, and `PUBLIC_SITE_URL` using your deployed site URL.
+- `BACHS_API_KEY` with a Bachs sandbox key to enable the payment test page. Keep provider secrets server-side.
+- Configure `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` to send account emails.
+- Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` for message image attachments. Set `VITE_SUPPORT_EMAIL` if the Contact page should show a support address.
+
+Vercel Functions do not provide persistent local disk or long-lived WebSocket connections. Product image files and seller verification documents currently use local disk, and real-time messaging uses Socket.IO; those features need durable object storage and a separate WebSocket-capable service for production use. Configure all required environment variables before deploying; the database must already be provisioned and accessible.
 
 ## Advertisement image uploads
 

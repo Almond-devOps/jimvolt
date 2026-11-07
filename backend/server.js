@@ -21,6 +21,7 @@ const { errorHandler, notFound } = require('./middleware/errorMiddleware')
 const { createSocketServer } = require('./socket')
 
 const app = express()
+let initialization
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map((origin) => origin.trim())
@@ -68,14 +69,26 @@ app.use('/', seoRouter)
 app.use(notFound)
 app.use(errorHandler)
 
-async function startServer({ port = Number(process.env.PORT || 5000), host } = {}) {
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-    throw new Error('Set JWT_SECRET to a random secret of at least 32 characters.')
-  }
+function initializeBackend() {
+  if (!initialization) {
+    initialization = (async () => {
+      if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+        throw new Error('Set JWT_SECRET to a random secret of at least 32 characters.')
+      }
 
-  await connectDB()
-  await ensureCoreSchema()
-  await ensureInitialCategories()
+      await connectDB()
+      await ensureCoreSchema()
+      await ensureInitialCategories()
+    })().catch((error) => {
+      initialization = undefined
+      throw error
+    })
+  }
+  return initialization
+}
+
+async function startServer({ port = Number(process.env.PORT || 5000), host } = {}) {
+  await initializeBackend()
 
   const server = http.createServer(app)
   const io = createSocketServer(server, allowedOrigins)
@@ -114,4 +127,4 @@ if (require.main === module) {
     })
 }
 
-module.exports = { app, startServer }
+module.exports = { app, initializeBackend, startServer }
