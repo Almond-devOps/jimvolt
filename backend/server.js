@@ -19,16 +19,15 @@ const bachsTestRoutes = require('./routes/bachsTestRoutes')
 const { ensureInitialCategories } = require('./models/categoryModel')
 const { errorHandler, notFound } = require('./middleware/errorMiddleware')
 const { createSocketServer } = require('./socket')
+const { getAllowedOrigins } = require('./utils/allowedOrigins')
 
 const app = express()
 let initialization
-const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim())
+const allowedOrigins = getAllowedOrigins()
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true)
     return callback(new Error('This origin is not allowed by the CORS policy.'))
   },
 }))

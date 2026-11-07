@@ -81,7 +81,7 @@ Import the repository as a Vercel project with the repository root as its Root D
 Configure these values in Vercel's project Environment Variables for each environment you deploy:
 
 - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` (`jimvolt_db`). Use a managed MySQL server reachable from Vercel, not `localhost` or the database root account.
-- `JWT_SECRET` (at least 32 characters), `FRONTEND_URL`, and `PUBLIC_SITE_URL` using your deployed site URL.
+- `JWT_SECRET` (at least 32 characters), `FRONTEND_URL`, and `PUBLIC_SITE_URL` using your deployed site URL. Vercel's deployment and production domains are also allowed automatically by the API CORS policy.
 - `BACHS_API_KEY` with a Bachs sandbox key to enable the payment test page. Keep provider secrets server-side.
 - Configure `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` to send account emails.
 - Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` for message image attachments. Set `VITE_SUPPORT_EMAIL` if the Contact page should show a support address.
