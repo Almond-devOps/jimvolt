@@ -76,7 +76,7 @@ Set `BACHS_API_KEY` in `backend/.env` to a Bachs sandbox API key, then open `/te
 
 ## Deploy frontend and API to Vercel
 
-Import the repository as a Vercel project with the repository root as its Root Directory. The root `vercel.json` defines two services: `frontend` (Vite) and `backend` (Express). It routes `/api/*`, `/uploads/*`, and server-rendered SEO paths to the backend; other routes, including `/tests/bachs`, go to the frontend. The backend has an internal binding to the frontend so its SEO routes can load the frontend HTML template. Browser API calls use the public same-origin `/api` path and do not need a service binding.
+Import the repository as a Vercel project with the repository root as its Root Directory. The root `vercel.json` defines two services: `frontend` (Vite) and `backend` (Express). It routes `/api/*`, `/uploads/*`, and server-rendered SEO paths to the backend; other routes, including `/tests/bachs`, go to the frontend. The frontend service rewrites SPA paths to `index.html`, enabling direct links and browser refreshes. The backend has an internal binding to the frontend so its SEO routes can load the frontend HTML template. Browser API calls use the public same-origin `/api` path and do not need a service binding.
 
 Configure these values in Vercel's project Environment Variables for each environment you deploy:
 
