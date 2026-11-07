@@ -1,53 +1,84 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm ci --prefix backend && npm ci --prefix frontend",
-  "buildCommand": "npm run build --prefix frontend",
-  "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 60,
-      "includeFiles": "{backend/config/schema.sql,frontend/dist/index.html}"
+  "services": {
+    "backend": {
+      "root": "backend",
+      "framework": "express",
+      "entrypoint": "vercel.js",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "frontend",
+          "format": "url",
+          "env": "JIMVOLT_FRONTEND_URL"
+        }
+      ]
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite"
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "^/api(?:/(.*))?$",
-      "dest": "/api/index.js?__vercel_path=/api/$1"
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "src": "^/uploads/(.*)$",
-      "dest": "/api/index.js?__vercel_path=/uploads/$1"
+      "source": "/uploads/(.*)",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "src": "^/$",
-      "dest": "/api/index.js?__vercel_path=/"
+      "source": "/ads/(.*)",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "src": "^/ads/([^/]+)$",
-      "dest": "/api/index.js?__vercel_path=/ads/$1"
+      "source": "/sellers/(.*)",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "src": "^/sellers/([^/]+)$",
-      "dest": "/api/index.js?__vercel_path=/sellers/$1"
+      "source": "/seller/(.*)",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "src": "^/seller/([^/]+)$",
-      "dest": "/api/index.js?__vercel_path=/seller/$1"
+      "source": "/category/(.*)",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "src": "^/category/([^/]+)$",
-      "dest": "/api/index.js?__vercel_path=/category/$1"
+      "source": "/robots.txt",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "src": "^/(robots\\.txt|sitemap(?:-\\d+)?\\.xml)$",
-      "dest": "/api/index.js?__vercel_path=/$1"
+      "source": "/sitemap.xml",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "handle": "filesystem"
+      "source": "/sitemap-:part.xml",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "src": "^/(.*)$",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
     }
   ]
 }

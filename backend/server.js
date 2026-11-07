@@ -32,6 +32,9 @@ app.use(cors({
     return callback(new Error('This origin is not allowed by the CORS policy.'))
   },
 }))
+app.use((req, res, next) => {
+  initializeBackend().then(() => next(), next)
+})
 app.use(express.json({ limit: '1mb' }))
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { dotfiles: 'deny', maxAge: '1d' }))
 app.use(express.static(path.resolve(__dirname, '../frontend/dist'), { index: false, maxAge: '1h' }))

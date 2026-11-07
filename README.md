@@ -76,9 +76,9 @@ Set `BACHS_API_KEY` in `backend/.env` to a Bachs sandbox API key, then open `/te
 
 ## Deploy frontend and API to Vercel
 
-Import the repository as a Vercel project with the repository root as its Root Directory. The root `vercel.json` builds the Vite frontend, routes `/api/*` to an Express serverless function, preserves server-rendered SEO routes, and sends other frontend routes (including `/tests/bachs`) to the SPA. The frontend uses same-origin `/api` requests in production.
+Import the repository as a Vercel project with the repository root as its Root Directory. The root `vercel.json` defines two services: `frontend` (Vite) and `backend` (Express). It routes `/api/*`, `/uploads/*`, and server-rendered SEO paths to the backend; other routes, including `/tests/bachs`, go to the frontend. The backend has an internal binding to the frontend so its SEO routes can load the frontend HTML template. Browser API calls use the public same-origin `/api` path and do not need a service binding.
 
-Configure these values in Vercel's Environment Variables for the environments you deploy:
+Configure these values in Vercel's project Environment Variables for each environment you deploy:
 
 - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` (`jimvolt_db`). Use a managed MySQL server reachable from Vercel, not `localhost` or the database root account.
 - `JWT_SECRET` (at least 32 characters), `FRONTEND_URL`, and `PUBLIC_SITE_URL` using your deployed site URL.
@@ -86,7 +86,7 @@ Configure these values in Vercel's Environment Variables for the environments yo
 - Configure `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` to send account emails.
 - Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` for message image attachments. Set `VITE_SUPPORT_EMAIL` if the Contact page should show a support address.
 
-Vercel Functions do not provide persistent local disk or long-lived WebSocket connections. Product image files and seller verification documents currently use local disk, and real-time messaging uses Socket.IO; those features need durable object storage and a separate WebSocket-capable service for production use. Configure all required environment variables before deploying; the database must already be provisioned and accessible.
+Do not set `JIMVOLT_FRONTEND_URL` manually; Vercel injects it through the backend-to-frontend service binding. Vercel Functions do not provide persistent local disk or long-lived WebSocket connections. Product image files and seller verification documents currently use local disk, and real-time messaging uses Socket.IO; those features need durable object storage and a separate WebSocket-capable service for production use. Configure all required environment variables before deploying; the database must already be provisioned and accessible.
 
 ## Advertisement image uploads
 

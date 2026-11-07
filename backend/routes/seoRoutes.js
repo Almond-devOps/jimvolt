@@ -43,6 +43,19 @@ function metaTags({ title, description, canonical, image, type = 'website', robo
 }
 
 async function loadTemplate() {
+  if (process.env.JIMVOLT_FRONTEND_URL) {
+    const frontendUrl = new URL('/', process.env.JIMVOLT_FRONTEND_URL)
+    if (!['http:', 'https:'].includes(frontendUrl.protocol)) {
+      throw new Error('JIMVOLT_FRONTEND_URL must use HTTP or HTTPS.')
+    }
+
+    const response = await fetch(frontendUrl)
+    if (!response.ok) {
+      throw new Error(`Could not load the frontend HTML template (${response.status}).`)
+    }
+    return response.text()
+  }
+
   return fs.readFile(path.join(frontendBuild, 'index.html'), 'utf8')
 }
 
