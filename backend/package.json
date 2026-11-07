@@ -1,0 +1,31 @@
+{
+  "name": "jimvolt-marketplace-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jimvolt renewable energy marketplace API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test",
+    "bootstrap:super-admin": "node scripts/ensure-super-admin.js",
+    "create-super-admin": "node scripts/createSuperAdmin.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@bachs/sdk": "^2.0.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.7.2",
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.5.0",
+    "mysql2": "^3.24.6",
+    "nodemailer": "^10.3.1",
+    "socket.io": "^4.8.4"
+  }
+}

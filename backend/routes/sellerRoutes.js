@@ -1,0 +1,64 @@
+const express = require('express')
+const { body, param, query } = require('express-validator')
+const authenticate = require('../middleware/authMiddleware')
+const { asyncHandler } = require('../middleware/errorMiddleware')
+const sellerController = require('../controllers/sellerController')
+const { parseVerificationUpload } = require('../middleware/verificationUpload')
+
+const router = express.Router()
+const verificationFields = [
+  body('verificationType').isIn(['individual', 'registered_business', 'renewable_energy_company']),
+  body('businessName').trim().isLength({ min: 2, max: 160 }),
+  body('businessOwner').trim().isLength({ min: 2, max: 120 }),
+  body('businessEmail').optional({ values: 'falsy' }).trim().isEmail().isLength({ max: 254 }),
+  body('registrationNumber').optional({ values: 'falsy' }).trim().isLength({ max: 100 }),
+  body('businessAddress').trim().isLength({ min: 5, max: 255 }),
+  body('businessPhone').trim().isLength({ min: 8, max: 32 }),
+  body('whatsapp').optional({ values: 'falsy' }).trim().isLength({ min: 8, max: 32 }),
+  body('state').optional({ values: 'falsy' }).trim().isLength({ max: 100 }),
+  body('city').optional({ values: 'falsy' }).trim().isLength({ max: 120 }),
+  body('businessDescription').optional({ values: 'falsy' }).trim().isLength({ max: 5000 }),
+  body('website').optional({ values: 'falsy' }).isURL({ protocols: ['http', 'https'], require_protocol: true }).isLength({ max: 2048 }),
+  body('businessCategoryId').optional({ values: 'falsy' }).isInt({ min: 1 }),
+]
+
+router.get('/public/:slug', param('slug').matches(/^[a-z0-9-]{1,180}$/), asyncHandler(sellerController.publicProfile))
+router.use(authenticate)
+
+router.get('/dashboard', asyncHandler(sellerController.dashboard))
+router.get('/ads', query('status').optional().isIn(['pending', 'approved', 'rejected', 'paused', 'sold', 'expired']), query('q').optional().isLength({ max: 100 }), query('sort').optional().isIn(['newest', 'oldest', 'views', 'price_asc', 'price_desc']), query('page').optional().isInt({ min: 1 }), query('limit').optional().isInt({ min: 1, max: 50 }), asyncHandler(sellerController.advertisements))
+router.get('/analytics', query('days').optional().isIn(['7', '30', '90', '365']), query('from').optional().isISO8601({ strict: true }), query('to').optional().isISO8601({ strict: true }), asyncHandler(sellerController.analytics))
+router.get('/analytics/:advertisementId', param('advertisementId').isInt({ min: 1 }), query('days').optional().isIn(['7', '30', '90', '365']), query('from').optional().isISO8601({ strict: true }), query('to').optional().isISO8601({ strict: true }), asyncHandler(sellerController.analytics))
+router.get('/profile', asyncHandler(sellerController.profile))
+router.put(
+  '/profile',
+  body('businessName').trim().isLength({ min: 2, max: 160 }),
+  body('logoUrl').optional({ values: 'falsy' }).isURL({ protocols: ['http', 'https'], require_protocol: true }).isLength({ max: 2048 }),
+  body('description').optional({ values: 'falsy' }).isLength({ max: 5000 }),
+  body('email').optional({ values: 'falsy' }).isEmail().isLength({ max: 254 }),
+  body('phone').optional({ values: 'falsy' }).isLength({ min: 8, max: 32 }),
+  body('whatsapp').optional({ values: 'falsy' }).isLength({ min: 8, max: 32 }),
+  body('websiteUrl').optional({ values: 'falsy' }).isURL({ protocols: ['http', 'https'], require_protocol: true }).isLength({ max: 2048 }),
+  body('address').optional({ values: 'falsy' }).isLength({ max: 255 }),
+  body('state').optional({ values: 'falsy' }).isLength({ max: 100 }),
+  body('city').optional({ values: 'falsy' }).isLength({ max: 120 }),
+  body('yearsInBusiness').optional({ values: 'falsy' }).isInt({ min: 0, max: 200 }),
+  body('operatingHours').optional({ values: 'falsy' }).isLength({ max: 500 }),
+  body('categoryId').optional({ values: 'falsy' }).isInt({ min: 1 }),
+  asyncHandler(sellerController.updateProfile),
+)
+router.post('/verification', parseVerificationUpload, ...verificationFields, asyncHandler(sellerController.submitVerification))
+router.put('/verification', parseVerificationUpload, ...verificationFields, asyncHandler(sellerController.updateVerification))
+router.post('/verification/documents', parseVerificationUpload, asyncHandler(sellerController.uploadVerificationDocuments))
+router.get('/verification', asyncHandler(sellerController.verification))
+router.get('/notifications', asyncHandler(sellerController.notifications))
+router.put('/notifications/:id/read', param('id').isInt({ min: 1 }), asyncHandler(sellerController.markNotificationRead))
+router.patch(
+  '/ads/:id/status',
+  param('id').isInt({ min: 1 }),
+  body('status').isIn(['paused', 'approved', 'sold']),
+  asyncHandler(sellerController.setAdvertisementStatus),
+)
+router.post('/ads/:id/duplicate', param('id').isInt({ min: 1 }), asyncHandler(sellerController.duplicateAdvertisement))
+
+module.exports = router

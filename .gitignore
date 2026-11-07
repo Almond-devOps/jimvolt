@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and generated frontend output
+**/node_modules/
+/frontend/dist/
+
+# Private user data and local machine files
+/backend/private-verifications/
+.DS_Store
+**/.DS_Store

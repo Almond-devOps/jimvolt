@@ -1,0 +1,23 @@
+import api from './api.js';
+
+export const getUserProfile = () => api.get('/users/profile');
+export const updateUserProfile = (payload) => api.put('/users/profile', payload);
+export const getDashboard = () => api.get('/users/dashboard');
+export const changePassword = (payload) => api.put('/users/change-password', payload);
+export const updateUserSettings = (payload) => api.put('/users/settings', payload);
+export const getMyAds = () => api.get('/users/my-ads');
+export const getFavourites = (params = {}) => api.get('/favorites', { params });
+export const getFavorites = (params = {}) => api.get('/favorites', { params });
+export const getFavoriteCount = () => api.get('/favorites/count');
+export const addFavourite = (id) => api.post(`/favorites/${id}`);
+export const removeFavourite = (id) => api.delete(`/favorites/${id}`);
+export const removeFavouriteEntry = (id) => api.delete(`/favorites/entry/${id}`);
+export const clearFavourites = () => api.delete('/favorites');
+export const getWishlistPreferences = () => api.get('/favorites/preferences');
+export const updateWishlistPreferences = (payload) => api.put('/favorites/preferences', payload);
+export const getRecentlyViewed = (params = {}) => api.get('/recently-viewed', { params });
+export const removeRecentlyViewed = (id) => api.delete(`/recently-viewed/${id}`);
+export const clearRecentlyViewed = () => api.delete('/recently-viewed');
+export const trackRecentlyViewed = (id) => api.post(`/recently-viewed/${id}`);
+export const importRecentlyViewed = (advertisementIds) => api.post('/recently-viewed/import', { advertisementIds });
+export const getMessages = () => api.get('/messages');
