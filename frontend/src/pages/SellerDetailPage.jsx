@@ -4,6 +4,7 @@ import ProductCard from '../components/ProductCard.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
 import { getSeller } from '../services/listingService.js';
+import UserAvatar from '../components/UserAvatar.jsx';
 
 export default function SellerDetailPage() {
   const { id } = useParams();
@@ -26,7 +27,7 @@ export default function SellerDetailPage() {
   return (
     <div className="container section">
       <header className="seller-detail-header panel">
-        {data.seller.profileImage ? <img src={data.seller.profileImage} alt="" /> : <span className="avatar">{data.seller.name?.[0] || 'S'}</span>}
+        <UserAvatar src={data.seller.profileImage} name={data.seller.name} className="avatar" />
         <div><p className="eyebrow">Jimvolt seller</p><h1>{data.seller.name} <VerifiedBusinessBadge verified={Boolean(data.seller.isVerified)} /></h1><p className="muted">{data.seller.isVerified ? 'Verified seller' : 'Seller'} · Member since {new Date(data.seller.createdAt).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })}</p></div>
       </header>
       {data.seller.businessProfile?.slug && <p><Link className="btn btn-white" to={`/seller/${data.seller.businessProfile.slug}`}>View business profile</Link></p>}

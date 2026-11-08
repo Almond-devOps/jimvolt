@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { getCurrentUser, loginAdministrator, loginUser, registerUser } from '../services/authService.js';
+import { getCurrentUser, loginAdministrator, loginUser, logoutUser, registerUser } from '../services/authService.js';
 import { getConversations } from '../services/messageService.js';
 import { getFavorites } from '../services/userService.js';
 
@@ -191,24 +191,37 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
+    const activeToken = token || getStoredToken();
+    if (activeToken) {
+      logoutUser(activeToken).catch((error) => {
+        console.error('Could not invalidate the server session:', error.message);
+      });
+    }
+    socketRef.current?.disconnect();
+    socketRef.current = null;
+    setSocket(null);
     setUser(null);
     setToken(null);
+    setUnreadMessageCount(0);
     setFavoriteIds([]);
     setFavoriteCount(0);
+    setFavoritesLoaded(false);
     localStorage.removeItem('jimvolt_user');
     localStorage.removeItem('jimvolt_token');
+    localStorage.removeItem('jimvolt_recently_viewed');
     sessionStorage.removeItem('jimvolt_user');
     sessionStorage.removeItem('jimvolt_token');
-  };
+    sessionStorage.removeItem('jimvolt_recently_viewed');
+  }, [token]);
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (updatedUser) => {
     if (!token) return null;
-    const { data } = await getCurrentUser();
-    setUser(data.user);
+    const userToSet = updatedUser || (await getCurrentUser()).data.user;
+    setUser(userToSet);
     const storage = localStorage.getItem('jimvolt_token') ? localStorage : sessionStorage;
-    storage.setItem('jimvolt_user', JSON.stringify(data.user));
-    return data.user;
+    storage.setItem('jimvolt_user', JSON.stringify(userToSet));
+    return userToSet;
   }, [token]);
 
   const setFavorite = useCallback((advertisementId, saved) => {
@@ -243,7 +256,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     refreshUser,
-  }), [user, token, socket, unreadMessageCount, favoriteIds, favoriteCount, favoritesLoaded, setFavorite, refreshFavorites, loading]);
+  }), [user, token, socket, unreadMessageCount, favoriteIds, favoriteCount, favoritesLoaded, setFavorite, refreshFavorites, logout, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

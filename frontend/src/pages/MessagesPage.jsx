@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
+import UserAvatar from '../components/UserAvatar.jsx';
 import {
   archiveConversation, getConversation, getConversationMessages, getConversations,
   markConversationRead, reportConversation, sendConversationMessage, uploadMessageImages,
@@ -400,7 +401,7 @@ export default function MessagesPage() {
                   onClick={() => selectConversation(conversation)}
                 >
                   <span className="chat-avatar-wrap">
-                    {person.profile_image ? <img className="chat-avatar" src={person.profile_image} alt="" /> : <span className="chat-avatar chat-avatar-fallback">{person.name?.charAt(0) || '?'}</span>}
+                    <UserAvatar src={person.profile_image} name={person.name} className="chat-avatar chat-avatar-fallback" />
                     <i className={`presence-dot ${onlineUsers[String(person.id)] ? 'online' : ''}`} />
                   </span>
                   <span className="conversation-row-body">
@@ -420,7 +421,7 @@ export default function MessagesPage() {
             <header className="chat-header">
               <button type="button" className="chat-back" onClick={() => { setSelectedId(''); setConversationDetails(null); setSearchParams({}); }} aria-label="Back to conversations"><ArrowLeft size={19} /></button>
               <span className="chat-avatar-wrap">
-                {partner?.profile_image ? <img className="chat-avatar" src={partner.profile_image} alt="" /> : <span className="chat-avatar chat-avatar-fallback">{partner?.name?.charAt(0) || '?'}</span>}
+                <UserAvatar src={partner?.profile_image} name={partner?.name} className="chat-avatar chat-avatar-fallback" />
                 <i className={`presence-dot ${isOnline ? 'online' : ''}`} />
               </span>
               <div className="chat-header-person">

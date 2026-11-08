@@ -3,6 +3,7 @@ import { ArrowLeft, Download, FileCheck2, Search, ShieldCheck } from 'lucide-rea
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../services/api.js';
+import UserAvatar from '../components/UserAvatar.jsx';
 
 const tabs = [
   { value: '', label: 'All applications' },
@@ -214,7 +215,7 @@ export default function AdminVerificationsPage() {
         {applications.length === 0 ? <div className="empty-state"><h2>No applications found</h2><p>There are no applications matching this filter.</p></div> : (
           <div className="table-wrap"><table className="admin-users-table"><thead><tr><th>Business</th><th>Owner</th><th>Contact</th><th>Location</th><th>Submitted</th><th>Status</th><th>Review</th></tr></thead><tbody>
             {applications.map((item) => <tr key={item.id}>
-              <td><span className="admin-business-cell">{(item.business_logo || item.profile_image) ? <img src={item.business_logo || item.profile_image} alt="" /> : <span className="admin-avatar">{item.business_name?.[0]?.toUpperCase() || 'B'}</span>}<strong>{item.business_name || 'Business application'}</strong></span></td>
+              <td><span className="admin-business-cell"><UserAvatar src={item.business_logo || item.profile_image} name={item.business_name} className="admin-avatar" /><strong>{item.business_name || 'Business application'}</strong></span></td>
               <td>{item.business_owner || item.full_name}</td><td>{item.business_email || item.email}<small className="admin-table-sub">{item.business_phone}</small></td>
               <td>{[item.city, item.state].filter(Boolean).join(', ') || item.business_address}</td>
               <td>{new Date(item.submitted_at).toLocaleDateString('en-NG')}</td><td><Status value={item.status} /></td>

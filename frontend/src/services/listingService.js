@@ -17,6 +17,8 @@ export async function getCitiesForState(state, signal) {
 }
 
 export const getFeatured = async () => (await getAds({ featured: 'true', limit: 8 })).advertisements;
+export const getPromoted = async () => (await api.get('/payments/featured')).data.advertisements;
+export const trackSponsoredAd = (id, event) => api.post(`/payments/track/${id}`, { event });
 export const getRecent = async () => (await getAds({ sort: 'newest', limit: 8 })).advertisements;
 export const getPopular = async () => (await getAds({ sort: 'popular', limit: 4 })).advertisements;
 

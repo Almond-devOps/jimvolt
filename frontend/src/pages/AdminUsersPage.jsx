@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Search, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeft, Search, ShieldCheck } from 'lucide-react';
 import api from '../services/api.js';
 import { formatNaira } from '../utils/format.js';
+import UserAvatar from '../components/UserAvatar.jsx';
 
 function VerificationStatus({ value }) {
   const status = value || 'not_submitted';
@@ -85,7 +86,7 @@ export default function AdminUsersPage() {
         </header>
         {error && <div className="notice error" role="alert">{error}</div>}
         <section className="panel admin-user-profile">
-          {account.profile_image ? <img src={account.profile_image} alt="" /> : <span className="admin-user-profile-avatar"><UserRound size={32} /></span>}
+          <UserAvatar src={account.profile_image} name={account.full_name} className="admin-user-profile-avatar" />
           <div><h2>{account.full_name}</h2><p>{account.email}</p><p>{account.phone || 'Phone not provided'}</p><div className="admin-user-tags"><AccountStatus value={account.account_status} /><VerificationStatus value={account.is_verified ? 'verified' : 'not_verified'} /><span className="status status-pending">{account.role.replaceAll('_', ' ')}</span></div></div>
         </section>
         <div className="admin-data-list">
@@ -117,7 +118,7 @@ export default function AdminUsersPage() {
         {loading ? <div className="admin-loading">Loading users...</div> : !users.length ? <div className="empty-state"><h2>No users found</h2><p>Change the search or filters to see other accounts.</p></div> : (
           <div className="table-wrap"><table className="admin-users-table"><thead><tr><th>User</th><th>Contact</th><th>Type</th><th>Verification</th><th>Status</th><th>Registered</th><th>Actions</th></tr></thead><tbody>
             {users.map((account) => <tr key={account.id}>
-              <td><Link className="admin-user-cell" to={`/admin/users/${account.id}`}>{account.profile_image ? <img src={account.profile_image} alt="" /> : <span className="admin-avatar">{account.full_name?.[0]?.toUpperCase() || 'U'}</span>}<span><strong>{account.full_name}</strong><small>#{account.id}</small></span></Link></td>
+              <td><Link className="admin-user-cell" to={`/admin/users/${account.id}`}><UserAvatar src={account.profile_image} name={account.full_name} className="admin-avatar" /><span><strong>{account.full_name}</strong><small>#{account.id}</small></span></Link></td>
               <td>{account.email}<small className="admin-table-sub">{account.phone || 'No phone'}</small></td>
               <td>{account.role.replaceAll('_', ' ')}</td><td><VerificationStatus value={account.verification_status || (account.is_verified ? 'verified' : 'not_verified')} /></td>
               <td><AccountStatus value={account.account_status} /></td><td>{new Date(account.created_at).toLocaleDateString('en-NG')}</td>

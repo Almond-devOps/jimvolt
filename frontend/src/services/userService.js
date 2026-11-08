@@ -1,7 +1,8 @@
 import api from './api.js';
 
 export const getUserProfile = () => api.get('/users/profile');
-export const updateUserProfile = (payload) => api.put('/users/profile', payload);
+export const updateUserProfile = (payload, onUploadProgress) => api.put('/users/profile', payload, { onUploadProgress, timeout: 60000 });
+export const removeUserProfileImage = () => api.delete('/users/profile/image');
 export const getDashboard = () => api.get('/users/dashboard');
 export const changePassword = (payload) => api.put('/users/change-password', payload);
 export const updateUserSettings = (payload) => api.put('/users/settings', payload);

@@ -6,7 +6,7 @@ export default function Footer() {
     <footer className="footer">
       <div className="container footer-grid">
         <div>
-          <p className="logo logo-light">Jimvolt</p>
+          <img className="brand-logo footer-logo" src="/jimvolt-logo.png" alt="Jimvolt" />
           <p className="footer-note">Nigeria's marketplace for solar, storage and clean energy. Buy from verified sellers or sell to buyers nationwide.</p>
         </div>
         <div>

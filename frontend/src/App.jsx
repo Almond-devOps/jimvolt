@@ -14,6 +14,7 @@ import AdminPage from './pages/AdminPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
 import AdminWorkspacePage from './pages/AdminWorkspacePage.jsx';
+import AdminPromotionPackagesPage from './pages/AdminPromotionPackagesPage.jsx';
 import AdminUsersPage from './pages/AdminUsersPage.jsx';
 import AdminVerificationsPage from './pages/AdminVerificationsPage.jsx';
 import VerifyEmailPage from './pages/VerifyEmailPage.jsx';
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="categories" element={<AdminWorkspacePage />} />
           <Route path="reports" element={<AdminWorkspacePage />} />
           <Route path="payments" element={<AdminWorkspacePage />} />
+          <Route path="promotion-packages" element={<AdminPromotionPackagesPage />} />
           <Route path="analytics" element={<AdminWorkspacePage />} />
           <Route path="settings" element={<AdminWorkspacePage />} />
         </Route>
@@ -76,6 +78,7 @@ export default function App() {
           <Route path="/dashboard/business-profile" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/verification" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/notifications" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/dashboard/promotions" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/ads/:id/edit" element={<ProtectedRoute><PostAdPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/account-settings" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />

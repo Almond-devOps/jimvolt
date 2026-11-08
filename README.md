@@ -74,6 +74,8 @@ Set `VITE_SUPPORT_EMAIL` in the frontend environment to provide the address disp
 
 Set `BACHS_API_KEY` in `backend/.env` to a Bachs sandbox API key, then open `/tests/bachs`. Enter a Naira amount to create a hosted checkout and redirect to Bachs. The endpoint accepts sandbox keys only; returning to the page does not verify payment completion.
 
+Seller promotions use Bachs hosted checkout at `/dashboard/promotions`. Configure `BACHS_API_KEY` and `BACHS_WEBHOOK_SECRET` on the backend, then register `POST /api/payments/webhook` in the Bachs developer portal for `checkout.completed`, `checkout.expired`, `collection.succeeded`, and `collection.failed`. The SDK verifies webhook signatures against the original request body; promotions are activated only after Bachs confirms a paid checkout and the stored amount and currency match. Run checkout tests with a Bachs sandbox key before switching to live credentials.
+
 ## Deploy frontend and API to Vercel
 
 Import the repository as a Vercel project with the repository root as its Root Directory. The root `vercel.json` defines two services: `frontend` (Vite) and `backend` (Express). It routes `/api/*`, `/uploads/*`, and server-rendered SEO paths to the backend; other routes, including `/tests/bachs`, go to the frontend. The frontend service rewrites SPA paths to `index.html`, enabling direct links and browser refreshes. The backend has an internal binding to the frontend so its SEO routes can load the frontend HTML template. Browser API calls use the public same-origin `/api` path and do not need a service binding.
@@ -82,7 +84,7 @@ Configure these values in Vercel's project Environment Variables for each enviro
 
 - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` (`jimvolt_db`). Use a managed MySQL server reachable from Vercel, not `localhost` or the database root account.
 - `JWT_SECRET` (at least 32 characters), `FRONTEND_URL`, and `PUBLIC_SITE_URL` using your deployed site URL. Vercel's deployment and production domains are also allowed automatically by the API CORS policy.
-- `BACHS_API_KEY` with a Bachs sandbox key to enable the payment test page. Keep provider secrets server-side.
+- `BACHS_API_KEY` and `BACHS_WEBHOOK_SECRET` to enable Bachs promotion checkout and verified webhooks. Use sandbox credentials during testing and keep provider secrets server-side.
 - Configure `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` to send account emails.
 - Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` for message image attachments. Set `VITE_SUPPORT_EMAIL` if the Contact page should show a support address.
 
@@ -100,6 +102,12 @@ PRODUCT_IMAGE_MAX_COUNT=10
 ```
 
 In production, keep `backend/uploads` on persistent storage and include it in backups. If the frontend and API are on different hosts, set `VITE_API_URL` to the public API URL so the frontend can resolve uploaded image paths to the API host.
+
+## Profile picture uploads
+
+The authenticated `PUT /api/users/profile` endpoint accepts the existing profile fields as multipart form data and an optional `profileImage` file. JPG/JPEG, PNG, and WebP files are checked against their extension, MIME type, and file signature, limited to 5 MB, and stored using unique server-generated identifiers. When Cloudinary credentials are configured, profile pictures reuse the existing Cloudinary account in `jimvolt/profiles`; otherwise, images are stored under `backend/uploads/profiles` and served through `/uploads/profiles/`. The existing `users.profile_image` field stores the resulting URL/path. `DELETE /api/users/profile/image` removes the signed-in user's picture; no database migration is required.
+
+Local profile image storage requires durable backend storage in production. Vercel Functions do not persist local files between invocations, so configure Cloudinary (the existing `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`) or another persistent storage service when deploying to Vercel.
 
 ## Main routes
 

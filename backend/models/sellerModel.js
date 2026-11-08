@@ -252,7 +252,7 @@ async function getAnalytics(userId, fromDate, toDate, advertisementId) {
      JOIN advertisements a ON a.id = aa.advertisement_id
      WHERE a.user_id = ? AND aa.occurred_at >= ? AND aa.occurred_at < DATE_ADD(?, INTERVAL 1 DAY)
        ${adFilter}
-     GROUP BY DATE(aa.occurred_at) ORDER BY day`,
+     GROUP BY DATE_FORMAT(aa.occurred_at, '%Y-%m-%d') ORDER BY day`,
     params,
   )
   const [enquiryRows] = await pool.execute(
@@ -262,34 +262,73 @@ async function getAnalytics(userId, fromDate, toDate, advertisementId) {
      WHERE a.user_id = ? AND m.receiver_id = ?
        AND m.created_at >= ? AND m.created_at < DATE_ADD(?, INTERVAL 1 DAY)
        ${advertisementId ? 'AND a.id = ?' : ''}
-     GROUP BY DATE(m.created_at) ORDER BY day`,
+     GROUP BY DATE_FORMAT(m.created_at, '%Y-%m-%d') ORDER BY day`,
     advertisementId
       ? [userId, userId, fromDate, toDate, advertisementId]
       : [userId, userId, fromDate, toDate],
   )
   const [totalRows] = await pool.execute(
-    `SELECT COUNT(*) AS total_ads, COALESCE(SUM(a.views), 0) AS total_views
+    `SELECT COUNT(*) AS total_ads,
+            COALESCE(SUM(a.status = 'approved'), 0) AS active_ads,
+            COALESCE(SUM(a.status = 'pending'), 0) AS pending_ads,
+            COALESCE(SUM(a.status = 'rejected'), 0) AS rejected_ads,
+            COALESCE(SUM(a.views), 0) AS total_views
      FROM advertisements a WHERE a.user_id = ? ${advertisementId ? 'AND a.id = ?' : ''}`,
     advertisementId ? [userId, advertisementId] : [userId],
   )
-  const [topAds] = await pool.execute(
-    `SELECT a.id, a.title, a.status, a.views, a.price,
-            COUNT(DISTINCT m.id) AS enquiries
+  const [enquiryTotals] = await pool.execute(
+    `SELECT COUNT(*) AS total
+     FROM messages m
+     JOIN advertisements a ON a.id = m.advertisement_id
+     WHERE a.user_id = ? AND m.receiver_id = ? ${advertisementId ? 'AND a.id = ?' : ''}`,
+    advertisementId ? [userId, userId, advertisementId] : [userId, userId],
+  )
+  const [favoriteTotals] = await pool.execute(
+    `SELECT COUNT(*) AS total
+     FROM favourites f
+     JOIN advertisements a ON a.id = f.advertisement_id
+     WHERE a.user_id = ? ${advertisementId ? 'AND a.id = ?' : ''}`,
+    advertisementId ? [userId, advertisementId] : [userId],
+  )
+  const [statusRows] = await pool.execute(
+    `SELECT a.status, COUNT(*) AS total
      FROM advertisements a
-     LEFT JOIN messages m ON m.advertisement_id = a.id AND m.receiver_id = ?
      WHERE a.user_id = ? ${advertisementId ? 'AND a.id = ?' : ''}
-     GROUP BY a.id ORDER BY a.views DESC, enquiries DESC LIMIT 10`,
+     GROUP BY a.status ORDER BY a.status`,
+    advertisementId ? [userId, advertisementId] : [userId],
+  )
+  const [topAds] = await pool.execute(
+    `SELECT a.id, a.title, a.status, a.views, a.price, a.created_at,
+            c.name AS category_name, a.state, a.city,
+            (SELECT COUNT(*) FROM messages m
+             WHERE m.advertisement_id = a.id AND m.receiver_id = ?) AS enquiries,
+            (SELECT COUNT(*) FROM favourites f
+             WHERE f.advertisement_id = a.id) AS favourites
+     FROM advertisements a
+     JOIN categories c ON c.id = a.category_id
+     WHERE a.user_id = ? ${advertisementId ? 'AND a.id = ?' : ''}
+     ORDER BY a.views DESC, enquiries DESC, a.created_at DESC LIMIT 10`,
     advertisementId ? [userId, userId, advertisementId] : [userId, userId],
   )
   return {
     trackedViews: viewRows.map((row) => ({ date: row.day, views: Number(row.total) })),
     enquiries: enquiryRows.map((row) => ({ date: row.day, enquiries: Number(row.total) })),
     totalAdvertisements: Number(totalRows[0].total_ads || 0),
+    activeAdvertisements: Number(totalRows[0].active_ads || 0),
+    pendingAdvertisements: Number(totalRows[0].pending_ads || 0),
+    rejectedAdvertisements: Number(totalRows[0].rejected_ads || 0),
     totalViews: Number(totalRows[0].total_views || 0),
+    totalEnquiries: Number(enquiryTotals[0].total || 0),
+    totalFavourites: Number(favoriteTotals[0].total || 0),
+    statusDistribution: statusRows.map((row) => ({
+      status: row.status,
+      count: Number(row.total),
+    })),
     topAdvertisements: topAds.map((row) => ({
       ...row,
       views: Number(row.views),
       enquiries: Number(row.enquiries),
+      favourites: Number(row.favourites),
     })),
     historyNote: 'Daily view history starts when tracking was enabled. Total views include the existing advertisement counters.',
   }

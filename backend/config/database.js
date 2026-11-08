@@ -58,6 +58,27 @@ async function ensureCoreSchema() {
     await pool.query(statement)
   }
 
+  const defaultPackages = [
+    ['Boost', 'A short campaign to give an approved listing extra visibility.', 2000, 3, 'Featured placement for 3 days'],
+    ['Featured', 'A week of sponsored visibility for an approved listing.', 5000, 7, 'Featured placement for 7 days'],
+    ['Premium', 'Two weeks of premium marketplace visibility.', 9000, 14, 'Featured placement for 14 days'],
+    ['Premium Plus', 'A full month of premium marketplace visibility.', 15000, 30, 'Featured placement for 30 days'],
+  ]
+  for (const [name, description, price, durationDays, benefits] of defaultPackages) {
+    const [equivalentPackages] = await pool.execute(
+      `SELECT id FROM promotion_packages
+       WHERE price = ? AND duration_days = ? AND is_active = TRUE LIMIT 1`,
+      [price, durationDays],
+    )
+    if (!equivalentPackages.length) {
+      await pool.execute(
+        `INSERT IGNORE INTO promotion_packages (name, description, price, duration_days, benefits)
+         VALUES (?, ?, ?, ?, ?)`,
+        [name, description, price, durationDays, benefits],
+      )
+    }
+  }
+
   const [favoriteColumns] = await pool.query('SHOW COLUMNS FROM favourites')
   const favoriteColumnNames = new Set(favoriteColumns.map((column) => column.Field))
   for (const [name, definition] of [
@@ -115,6 +136,16 @@ async function ensureCoreSchema() {
     if (!columns.length) {
       await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${name}\` ${definition}`)
     }
+  }
+
+  await ensureColumn('payment_transactions', 'provider_checkout_id', 'VARCHAR(100) NULL')
+  await ensureColumn('payment_transactions', 'provider_payment_id', 'VARCHAR(100) NULL')
+  await ensureColumn('payment_transactions', 'provider_session_expires_at', 'DATETIME NULL')
+  const [paymentIndexes] = await pool.query('SHOW INDEX FROM payment_transactions')
+  if (!paymentIndexes.some((index) => index.Key_name === 'uq_payment_provider_checkout')) {
+    await pool.query(
+      'ALTER TABLE payment_transactions ADD UNIQUE KEY uq_payment_provider_checkout (provider, provider_checkout_id)',
+    )
   }
 
   const [userRole] = await pool.query("SHOW COLUMNS FROM users LIKE 'role'")

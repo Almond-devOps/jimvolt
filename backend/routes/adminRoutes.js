@@ -2,6 +2,7 @@ const express = require('express')
 const { rateLimit } = require('express-rate-limit')
 const { body, param, query } = require('express-validator')
 const adminController = require('../controllers/adminController')
+const promotionController = require('../controllers/promotionController')
 const authController = require('../controllers/authController')
 const requireAdmin = require('../middleware/adminMiddleware')
 const requireSuperAdmin = require('../middleware/superAdminMiddleware')
@@ -132,6 +133,31 @@ router.put('/reports/:id/investigate', idParam, body('notes').optional({ values:
 router.post('/reports/:id/investigate-conversation', idParam, body('reason').trim().isLength({ min: 10, max: 1000 }), asyncHandler(adminController.investigateReportedConversation))
 
 router.get('/payments', ...pagination, query('status').optional().isIn(['pending', 'succeeded', 'failed']), asyncHandler(adminController.payments))
+router.get('/monetization', query('from').optional().isISO8601({ strict: true }), query('to').optional().isISO8601({ strict: true }), asyncHandler(promotionController.monetization))
+router.get('/promotion-packages', asyncHandler(promotionController.adminPackages))
+router.post(
+  '/promotion-packages',
+  body('name').trim().isLength({ min: 2, max: 100 }),
+  body('description').optional({ values: 'falsy' }).trim().isLength({ max: 1000 }),
+  body('price').isFloat({ min: 1, max: 99999999999.99 }),
+  body('durationDays').isInt({ min: 1, max: 365 }),
+  body('benefits').optional({ values: 'falsy' }).trim().isLength({ max: 2000 }),
+  body('isActive').optional().isBoolean(),
+  asyncHandler(promotionController.savePackage),
+)
+router.put(
+  '/promotion-packages/:id',
+  idParam,
+  body('name').trim().isLength({ min: 2, max: 100 }),
+  body('description').optional({ values: 'falsy' }).trim().isLength({ max: 1000 }),
+  body('price').isFloat({ min: 1, max: 99999999999.99 }),
+  body('durationDays').isInt({ min: 1, max: 365 }),
+  body('benefits').optional({ values: 'falsy' }).trim().isLength({ max: 2000 }),
+  body('isActive').isBoolean(),
+  asyncHandler(promotionController.savePackage),
+)
+router.get('/promotions', ...pagination, query('status').optional().isIn(['pending_payment', 'pending_approval', 'active', 'expired', 'paused', 'terminated', 'failed']), asyncHandler(promotionController.adminPromotions))
+router.patch('/promotions/:id/status', idParam, body('status').isIn(['paused', 'terminated']), asyncHandler(promotionController.moderatePromotion))
 router.get('/audit-logs', ...pagination, asyncHandler(adminController.auditLogs))
 
 router.get('/advertisements/pending', asyncHandler(adminController.listPending))

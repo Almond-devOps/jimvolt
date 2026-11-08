@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, EyeOff, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -11,8 +11,14 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState(null);
+  const [notice, setNotice] = useState(() => location.state?.notice ? { type: 'success', text: location.state.notice } : null);
   const redirectTo = location.state?.from || '/dashboard';
+
+  useEffect(() => {
+    if (notice?.type !== 'success') return undefined;
+    const timeout = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
   const updateField = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -39,6 +45,7 @@ export default function LoginPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
+        <Link to="/" className="auth-logo" aria-label="Jimvolt home"><img className="brand-logo auth-brand-image" src="/jimvolt-logo.png" alt="Jimvolt" /></Link>
         <div className="auth-header">
           <div className="auth-badge"><ShieldCheck size={22} /></div>
           <div>
@@ -71,7 +78,7 @@ export default function LoginPage() {
             <Link to="/forgot-password" className="link subtle-link">Forgot password?</Link>
           </div>
 
-          {notice && <div className={`notice ${notice.type}`}>{notice.text}</div>}
+          {notice && <div className={`notice ${notice.type}`} role={notice.type === 'success' ? 'status' : 'alert'}>{notice.text}</div>}
 
           <button className="btn btn-primary auth-submit" type="submit" disabled={loading}>
             {loading ? <><LoaderCircle size={16} className="spin" /> Signing in...</> : 'Sign in'}

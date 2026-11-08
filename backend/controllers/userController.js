@@ -5,6 +5,7 @@ const userModel = require('../models/userModel')
 const adModel = require('../models/adModel')
 const emailService = require('../services/emailService')
 const { isValidNigerianPhone, normalizeNigerianPhone } = require('../utils/phone')
+const { removeProfileImage, storeProfileImage } = require('../utils/profileImageStorage')
 
 function checkValidation(req) {
   const errors = validationResult(req)
@@ -46,11 +47,46 @@ async function updateProfile(req, res) {
       throw error
     }
   }
-  const user = await userModel.updateProfile(req.user.id, {
-    fullName: req.body.fullName.trim(),
-    phone: normalizedPhone,
-    profileImage: req.body.profileImage?.trim(),
-  })
+
+  const storedImage = req.file ? await storeProfileImage(req.file, req.user.id) : null
+  let user
+  try {
+    user = await userModel.updateProfile(req.user.id, {
+      fullName: req.body.fullName.trim(),
+      phone: normalizedPhone,
+      profileImage: storedImage?.url || req.user.profile_image,
+    })
+  } catch (error) {
+    if (storedImage) {
+      try {
+        await removeProfileImage(storedImage.url, req.user.id)
+      } catch (cleanupError) {
+        console.error('Could not clean up a profile image after a failed profile update:', cleanupError.message)
+      }
+    }
+    throw error
+  }
+
+  if (storedImage && req.user.profile_image && req.user.profile_image !== storedImage.url) {
+    try {
+      await removeProfileImage(req.user.profile_image, req.user.id)
+    } catch (error) {
+      console.error('Could not remove the previous profile image:', error.message)
+    }
+  }
+  return res.json({ user: sanitizeUser(user) })
+}
+
+async function removeProfileImageFromAccount(req, res) {
+  const previousImage = req.user.profile_image
+  const user = await userModel.updateProfileImage(req.user.id, null)
+  if (previousImage) {
+    try {
+      await removeProfileImage(previousImage, req.user.id)
+    } catch (error) {
+      console.error('Could not remove the previous profile image:', error.message)
+    }
+  }
   return res.json({ user: sanitizeUser(user) })
 }
 
@@ -59,7 +95,6 @@ async function updateSettings(req, res) {
 
   const nextEmail = req.body.email?.trim().toLowerCase()
   const nextPhone = normalizeNigerianPhone(req.body.phone?.trim())
-  const profileImage = req.body.profileImage?.trim()
 
   if (req.body.phone && !isValidNigerianPhone(req.body.phone)) {
     const error = new Error('Enter a valid Nigerian phone number.')
@@ -107,7 +142,7 @@ async function updateSettings(req, res) {
   const user = await userModel.updateProfile(req.user.id, {
     fullName: req.body.fullName || req.user.full_name,
     phone: nextPhone || req.user.phone,
-    profileImage: profileImage || req.user.profile_image,
+    profileImage: req.user.profile_image,
   })
 
   const refreshedUser = await userModel.findById(req.user.id)
@@ -180,6 +215,7 @@ module.exports = {
   getProfile,
   getVerifiedSellers,
   myAds,
+  removeProfileImageFromAccount,
   removeFavorite,
   updateProfile,
   updateSettings,

@@ -4,7 +4,7 @@ const sortOrders = Object.freeze({
   price_asc: 'a.price ASC, a.created_at DESC',
   price_desc: 'a.price DESC, a.created_at DESC',
   most_viewed: 'a.views DESC, a.created_at DESC',
-  popular: 'a.is_featured DESC, a.views DESC, a.created_at DESC',
+  popular: 'is_sponsored DESC, a.is_featured DESC, a.views DESC, a.created_at DESC',
 })
 
 function normalizeState(value) {
@@ -71,8 +71,13 @@ function buildFilters(query) {
     values.push(query.verified === 'true' ? 1 : 0)
   }
   if (query.featured !== undefined && query.featured !== '') {
-    conditions.push('a.is_featured = ?')
-    values.push(query.featured === 'true' || query.featured === '1' ? 1 : 0)
+    const featured = query.featured === 'true' || query.featured === '1'
+    conditions.push(featured
+      ? `(a.is_featured = ? OR EXISTS (SELECT 1 FROM promotions pr WHERE pr.advertisement_id = a.id
+          AND pr.status = 'active' AND pr.expires_at > CURRENT_TIMESTAMP))`
+      : `(a.is_featured = ? AND NOT EXISTS (SELECT 1 FROM promotions pr WHERE pr.advertisement_id = a.id
+          AND pr.status = 'active' AND pr.expires_at > CURRENT_TIMESTAMP))`)
+    values.push(featured ? 1 : 0)
   }
   if (query.recently === 'true') {
     conditions.push('a.created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 7 DAY)')

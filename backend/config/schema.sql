@@ -343,17 +343,73 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
   status ENUM('pending', 'succeeded', 'failed') NOT NULL DEFAULT 'pending',
   provider VARCHAR(80) NOT NULL,
   provider_reference VARCHAR(191) NOT NULL,
+  provider_checkout_id VARCHAR(100) NULL,
+  provider_payment_id VARCHAR(100) NULL,
+  provider_session_expires_at DATETIME NULL,
   verified_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_payment_provider_reference (provider, provider_reference),
+  UNIQUE KEY uq_payment_provider_checkout (provider, provider_checkout_id),
   KEY idx_payment_status_date (status, created_at),
   KEY idx_payment_user_date (user_id, created_at),
   CONSTRAINT fk_payment_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT,
   CONSTRAINT fk_payment_ad FOREIGN KEY (advertisement_id) REFERENCES advertisements (id) ON DELETE SET NULL,
   CONSTRAINT chk_payment_amount CHECK (amount >= 0),
   CONSTRAINT chk_verified_payment CHECK (status != 'succeeded' OR verified_at IS NOT NULL)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS bachs_webhook_events (
+  event_id VARCHAR(191) NOT NULL,
+  event_type VARCHAR(80) NOT NULL,
+  received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (event_id),
+  KEY idx_bachs_webhook_received (received_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS promotion_packages (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  description VARCHAR(1000) NOT NULL DEFAULT '',
+  price DECIMAL(13, 2) NOT NULL,
+  duration_days SMALLINT UNSIGNED NOT NULL,
+  benefits TEXT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_promotion_packages_name (name),
+  KEY idx_promotion_packages_active (is_active, duration_days),
+  CONSTRAINT chk_promotion_package_price CHECK (price > 0),
+  CONSTRAINT chk_promotion_package_duration CHECK (duration_days > 0)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS promotions (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  advertisement_id BIGINT UNSIGNED NULL,
+  package_id BIGINT UNSIGNED NOT NULL,
+  payment_id BIGINT UNSIGNED NOT NULL,
+  duration_days SMALLINT UNSIGNED NOT NULL,
+  status ENUM('pending_payment', 'pending_approval', 'active', 'expired', 'paused', 'terminated', 'failed') NOT NULL DEFAULT 'pending_payment',
+  starts_at TIMESTAMP NULL,
+  expires_at TIMESTAMP NULL,
+  impressions BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  clicks BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_promotion_payment (payment_id),
+  KEY idx_promotions_ad_status_expiry (advertisement_id, status, expires_at),
+  KEY idx_promotions_user_created (user_id, created_at),
+  KEY idx_promotions_status_expiry (status, expires_at),
+  CONSTRAINT fk_promotion_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_promotion_ad FOREIGN KEY (advertisement_id) REFERENCES advertisements (id) ON DELETE SET NULL,
+  CONSTRAINT fk_promotion_package FOREIGN KEY (package_id) REFERENCES promotion_packages (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_promotion_payment FOREIGN KEY (payment_id) REFERENCES payment_transactions (id) ON DELETE RESTRICT,
+  CONSTRAINT chk_promotion_duration CHECK (duration_days > 0),
+  CONSTRAINT chk_promotion_dates CHECK (starts_at IS NULL OR expires_at IS NULL OR expires_at > starts_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS category_subcategories (

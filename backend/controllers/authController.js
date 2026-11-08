@@ -185,4 +185,10 @@ function me(req, res) {
   return res.json({ user: sanitizeUser(req.user) })
 }
 
-module.exports = { adminLogin, forgotPassword, login, me, register, resetPassword, verifyEmail }
+async function logout(req, res) {
+  await userModel.invalidateTokens(req.user.id)
+  req.app.get('io')?.in(`user:${req.user.id}`).disconnectSockets(true)
+  return res.json({ message: 'You have been logged out.' })
+}
+
+module.exports = { adminLogin, forgotPassword, login, logout, me, register, resetPassword, verifyEmail }

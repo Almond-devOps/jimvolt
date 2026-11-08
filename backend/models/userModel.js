@@ -61,6 +61,14 @@ async function updateProfile(id, { fullName, phone, profileImage }) {
   return findById(id)
 }
 
+async function updateProfileImage(id, profileImage) {
+  await pool.execute(
+    'UPDATE users SET profile_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [profileImage, id],
+  )
+  return findById(id)
+}
+
 async function updateEmail(id, email) {
   await pool.execute(
     'UPDATE users SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -128,6 +136,14 @@ async function updatePassword(id, passwordHash) {
     [passwordHash, id],
   )
   return findById(id)
+}
+
+async function invalidateTokens(userId) {
+  const [result] = await pool.execute(
+    'UPDATE users SET token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [userId],
+  )
+  return result.affectedRows > 0
 }
 
 async function consumePasswordReset(id, passwordHash, tokenHash) {
@@ -255,6 +271,7 @@ module.exports = {
   findPublicSeller,
   getDashboardStats,
   getFavorites,
+  invalidateTokens,
   setPasswordResetToken,
   setPendingEmail,
   updateEmail,
@@ -263,5 +280,6 @@ module.exports = {
   updateLastLogin,
   updatePassword,
   updateProfile,
+  updateProfileImage,
   removeFavorite,
 }

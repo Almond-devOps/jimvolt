@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Eye, EyeOff, LoaderCircle, ShieldCheck, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Eye, EyeOff, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -12,9 +12,16 @@ export default function AdminLoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [successNotice, setSuccessNotice] = useState(location.state?.notice || '');
   const [error, setError] = useState(
     location.state?.unauthorized ? 'This account does not have administrator access.' : '',
   );
+
+  useEffect(() => {
+    if (!successNotice) return undefined;
+    const timeout = window.setTimeout(() => setSuccessNotice(''), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [successNotice]);
 
   if (authLoading) {
     return <main className="admin-login-page"><div className="admin-login-card loading-card">Checking your session...</div></main>;
@@ -26,6 +33,7 @@ export default function AdminLoginPage() {
   const submit = async (event) => {
     event.preventDefault();
     setError('');
+    setSuccessNotice('');
     setSubmitting(true);
     try {
       await loginAdmin({ email, password, rememberMe });
@@ -44,8 +52,7 @@ export default function AdminLoginPage() {
     <main className="admin-login-page">
       <section className="admin-login-card" aria-labelledby="admin-login-title">
         <Link to="/" className="logo admin-login-logo" aria-label="Jimvolt homepage">
-          <span className="logo-mark"><Zap size={21} fill="white" aria-hidden="true" /></span>
-          Jimvolt
+          <img className="brand-logo admin-login-brand-image" src="/jimvolt-logo.png" alt="Jimvolt" />
         </Link>
         <div className="admin-login-heading">
           <span className="admin-login-icon"><ShieldCheck size={23} aria-hidden="true" /></span>
@@ -55,6 +62,7 @@ export default function AdminLoginPage() {
           </div>
         </div>
         <p className="muted">Use your authorized administrator account to continue.</p>
+        {successNotice && <div className="notice success" role="status">{successNotice}</div>}
 
         <form className="auth-form admin-login-form" onSubmit={submit}>
           <label className="field" htmlFor="admin-email">

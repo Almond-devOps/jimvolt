@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   BarChart3, Bell, BriefcaseBusiness, CheckCircle2, CircleHelp, Eye, FileCheck2, FolderOpen,
-  Globe2, LayoutDashboard, LogOut, Menu, MessageSquareText, Plus, Search, Settings, ShieldCheck,
+  Globe2, LayoutDashboard, Menu, MessageSquareText, Plus, Search, Settings, ShieldCheck,
   TimerReset, Trash2, UserCircle2, X, XCircle, Copy, Pause, Play, Pencil, ExternalLink,
+  Megaphone, Heart,
 } from 'lucide-react';
-import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, NavLink, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import LogoutAction from '../components/LogoutAction.jsx';
 import { getCategories } from '../services/listingService.js';
 import { deleteAd } from '../services/listingService.js';
 import {
@@ -18,12 +20,17 @@ import { NIGERIAN_STATES } from '../utils/constants.js';
 import { formatNaira } from '../utils/format.js';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
+import UserAvatar from '../components/UserAvatar.jsx';
+import {
+  getMyPromotions, getPromotionPackages, initializePromotion, verifyPromotion,
+} from '../services/promotionService.js';
 
 const navigation = [
   { label: 'Overview', path: '/dashboard', icon: LayoutDashboard },
   { label: 'My Advertisements', path: '/dashboard/ads', icon: FolderOpen },
   { label: 'Post New Ad', path: '/post-ad', icon: Plus },
   { label: 'Messages', path: '/messages', icon: MessageSquareText },
+  { label: 'Promote Your Products', path: '/dashboard/promotions', icon: Megaphone },
   { label: 'Analytics', path: '/dashboard/analytics', icon: BarChart3 },
   { label: 'Business Profile', path: '/dashboard/business-profile', icon: BriefcaseBusiness },
   { label: 'Verification', path: '/dashboard/verification', icon: FileCheck2 },
@@ -45,9 +52,8 @@ function messageFrom(error, fallback) {
 }
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, unreadMessageCount } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const isAnalyticsPath = location.pathname.startsWith('/dashboard/analytics');
   const [unread, setUnread] = useState(0);
   const [unreadError, setUnreadError] = useState('');
@@ -84,32 +90,34 @@ export default function DashboardPage() {
     return () => { active = false; };
   }, [location.pathname]);
 
-  const signOut = () => {
-    logout();
-    navigate('/');
-  };
-
   return (
     <div className={`dashboard-shell seller-dashboard-shell${mobileOpen ? ' mobile-open' : ''}`}>
       {mobileOpen && <button className="seller-drawer-overlay" type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <aside className="dashboard-sidebar seller-sidebar" id="seller-navigation">
         <div className="seller-sidebar-heading">
-          <Link to="/" className="dashboard-brand" onClick={() => setMobileOpen(false)}>Jimvolt</Link>
+          <Link to="/" className="dashboard-brand" onClick={() => setMobileOpen(false)} aria-label="Jimvolt home">
+            <img className="brand-logo seller-brand-image" src="/jimvolt-logo.png" alt="Jimvolt" />
+          </Link>
           <button type="button" className="seller-drawer-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={20} /></button>
         </div>
         <div className="seller-mini-profile">
-          {user?.profile_image ? <img src={user.profile_image} alt="" /> : <span>{user?.full_name?.[0] || 'S'}</span>}
+          <UserAvatar src={user?.profile_image} name={user?.full_name} className="seller-mini-avatar" />
           <div><strong>{user?.full_name || 'Seller'} <VerifiedBusinessBadge verified={Boolean(user?.is_verified)} /></strong><small>Seller account</small></div>
         </div>
         <nav className="dashboard-nav" aria-label="Seller dashboard">
           {navigation.map(({ label, path, icon: Icon }) => (
             <NavLink key={label} to={path} end={path === '/dashboard'} onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive || (path === '/dashboard/analytics' && isAnalyticsPath) ? 'active' : ''}>
               <Icon size={18} /><span>{label}</span>
+              {label === 'Messages' && unreadMessageCount > 0 && (
+                <span className="notification-count" aria-label={`${unreadMessageCount} unread messages`}>
+                  {unreadMessageCount.toLocaleString()}
+                </span>
+              )}
               {label === 'Notifications' && unread > 0 && <span className="notification-count">{unread}</span>}
             </NavLink>
           ))}
           {user?.role === 'admin' && <Link to="/admin" onClick={() => setMobileOpen(false)}><ShieldCheck size={18} /><span>Admin review</span></Link>}
-          <button type="button" className="dashboard-logout" onClick={signOut}><LogOut size={18} /><span>Logout</span></button>
+          <LogoutAction className="dashboard-logout" label="Logout" />
         </nav>
       </aside>
 
@@ -118,9 +126,12 @@ export default function DashboardPage() {
           <button type="button" className="seller-mobile-menu" aria-label="Open navigation" aria-expanded={mobileOpen} aria-controls="seller-navigation" onClick={() => setMobileOpen(true)}>
             <Menu size={21} />
           </button>
-          <div>
+          <div className="seller-dashboard-welcome">
+            <UserAvatar src={user?.profile_image} name={user?.full_name} className="seller-welcome-avatar" />
+            <div>
             <p className="eyebrow"><Link to="/dashboard">Dashboard</Link> / {title}</p>
             <h1>{title === 'Overview' ? `Welcome back, ${user?.full_name?.split(' ')[0] || 'seller'}.` : title}</h1>
+            </div>
           </div>
           <div className="dashboard-header-actions">
             <Link to="/dashboard/notifications" className="icon-link" aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}>
@@ -133,6 +144,7 @@ export default function DashboardPage() {
         {unreadError && <div className="notice error dashboard-toast" role="alert">{unreadError}</div>}
         {location.pathname === '/dashboard' && <Overview setToast={setToast} />}
         {location.pathname === '/dashboard/ads' && <AdvertisementManagement setToast={setToast} />}
+        {location.pathname === '/dashboard/promotions' && <PromotionManagement setToast={setToast} />}
         {isAnalyticsPath && <Analytics />}
         {location.pathname === '/dashboard/business-profile' && <BusinessProfile setToast={setToast} />}
         {location.pathname === '/dashboard/verification' && <Verification setToast={setToast} />}
@@ -212,7 +224,17 @@ function StatCard({ label, value, Icon }) {
 }
 
 function StatusBadge({ status }) {
-  const label = status === 'approved' ? 'Active' : status;
+  const labels = {
+    approved: 'Active',
+    pending: 'Pending',
+    rejected: 'Rejected',
+    paused: 'Paused',
+    suspended: 'Suspended',
+    changes_requested: 'Changes requested',
+    sold: 'Sold',
+    expired: 'Expired',
+  };
+  const label = labels[status] || String(status || 'Unknown').replaceAll('_', ' ');
   return <span className={`status status-${status}`}>{label}</span>;
 }
 
@@ -223,19 +245,34 @@ function AdvertisementManagement({ setToast }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [workingId, setWorkingId] = useState(null);
+  const [reload, setReload] = useState(0);
 
-  const load = async () => {
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    const params = { page: filters.page, limit: 20, sort: filters.sort };
+    const search = filters.q.trim();
+    if (search) params.q = search;
+    if (filters.status) params.status = filters.status;
     setLoading(true);
     setError('');
-    try {
-      const { data } = await getSellerAds({ ...filters, limit: 20 });
-      setAds(data.advertisements);
-      setPagination(data.pagination);
-    } catch (requestError) {
-      setError(messageFrom(requestError, 'Could not load your advertisements.'));
-    } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [filters]);
+    getSellerAds(params, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!active) return;
+        setAds(data.advertisements || []);
+        setPagination(data.pagination || { page: filters.page, pages: 0, total: 0 });
+      })
+      .catch((requestError) => {
+        if (active && requestError.code !== 'ERR_CANCELED') {
+          setError(messageFrom(requestError, 'Unable to load your advertisements. Please try again.'));
+        }
+      })
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [filters, reload]);
 
   const remove = async (ad) => {
     if (!window.confirm(`Delete “${ad.title}”? This cannot be undone.`)) return;
@@ -243,8 +280,14 @@ function AdvertisementManagement({ setToast }) {
     try {
       await deleteAd(ad.id);
       setAds((current) => current.filter((item) => item.id !== ad.id));
+      setPagination((current) => ({ ...current, total: Math.max(0, current.total - 1) }));
+      if (ads.length === 1 && filters.page > 1) {
+        setFilters((current) => ({ ...current, page: current.page - 1 }));
+      } else {
+        setReload((current) => current + 1);
+      }
       setToast('Advertisement deleted.');
-    } catch (requestError) { setError(messageFrom(requestError, 'Could not delete that advertisement.')); }
+    } catch (requestError) { setError(messageFrom(requestError, 'Unable to delete this advertisement. Please try again.')); }
     finally { setWorkingId(null); }
   };
 
@@ -254,7 +297,7 @@ function AdvertisementManagement({ setToast }) {
     try {
       await updateSellerAdStatus(ad.id, status);
       setToast(status === 'paused' ? 'Advertisement paused.' : status === 'sold' ? 'Advertisement marked as sold.' : 'Advertisement reactivated.');
-      await load();
+      setReload((current) => current + 1);
     } catch (requestError) { setError(messageFrom(requestError, 'Could not update that advertisement.')); }
     finally { setWorkingId(null); }
   };
@@ -264,7 +307,8 @@ function AdvertisementManagement({ setToast }) {
     try {
       const { data } = await duplicateSellerAd(ad.id);
       setToast(data.message);
-      await load();
+      setFilters((current) => ({ ...current, page: 1 }));
+      setReload((current) => current + 1);
     } catch (requestError) { setError(messageFrom(requestError, 'Could not duplicate that advertisement.')); }
     finally { setWorkingId(null); }
   };
@@ -273,7 +317,7 @@ function AdvertisementManagement({ setToast }) {
     <div className="seller-listing-toolbar">
       <label className="seller-search"><Search size={17} /><input value={filters.q} onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value, page: 1 }))} placeholder="Search your advertisements" /></label>
       <select aria-label="Filter by status" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value, page: 1 }))}>
-        <option value="">All statuses</option><option value="approved">Active</option><option value="pending">Pending</option><option value="rejected">Rejected</option><option value="paused">Paused</option><option value="sold">Sold</option><option value="expired">Expired</option>
+        <option value="">All statuses</option><option value="approved">Active</option><option value="pending">Pending</option><option value="rejected">Rejected</option><option value="paused">Paused</option><option value="suspended">Suspended</option><option value="changes_requested">Changes requested</option><option value="sold">Sold</option><option value="expired">Expired</option>
       </select>
       <select aria-label="Sort advertisements" value={filters.sort} onChange={(event) => setFilters((current) => ({ ...current, sort: event.target.value }))}>
         <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="views">Most viewed</option><option value="price_asc">Lowest price</option><option value="price_desc">Highest price</option>
@@ -281,11 +325,16 @@ function AdvertisementManagement({ setToast }) {
       <Link to="/post-ad" className="btn btn-primary"><Plus size={16} /> New ad</Link>
     </div>
     {error && <div className="notice error" role="alert">{error}</div>}
-    {loading ? <div className="loading-card">Loading your advertisements...</div> : !ads.length ? <div className="empty small">No advertisements match these filters.</div> : <div className="table-wrap seller-ads-table">
-      <table><thead><tr><th>Product</th><th>Status</th><th>Views</th><th>Enquiries</th><th>Date published</th><th>Actions</th></tr></thead><tbody>
+    {!loading && !error && <p className="seller-ad-count">{pagination.total.toLocaleString()} advertisement{pagination.total === 1 ? '' : 's'}</p>}
+    {loading ? <div className="seller-ads-skeleton" aria-label="Loading advertisements">{[1, 2, 3, 4].map((item) => <div key={item} className="seller-ad-skeleton-row skeleton" />)}</div>
+      : !ads.length ? !error && <div className="empty small">{filters.q || filters.status ? 'No advertisements match these filters.' : 'You have not posted any advertisements yet. Post your first product to get started.'}</div>
+        : <div className="table-wrap seller-ads-table">
+      <table><thead><tr><th>Product</th><th>Category</th><th>Location</th><th>Status</th><th>Views</th><th>Enquiries</th><th>Date posted</th><th>Actions</th></tr></thead><tbody>
         {ads.map((ad) => <tr key={ad.id}>
           <td><div className="seller-ad-title">{ad.images?.[0] ? <img src={resolveImageUrl(ad.images[0])} alt="" /> : <span className="seller-ad-placeholder"><FolderOpen size={20} /></span>}<span>{ad.title}<small>{formatNaira(ad.price)}</small></span></div></td>
-          <td><StatusBadge status={ad.status} /></td><td>{Number(ad.views || 0).toLocaleString()}</td><td>{ad.enquiries || 0}</td><td>{new Date(ad.created_at).toLocaleDateString('en-NG')}</td>
+          <td>{ad.category?.name || ad.category_name || '—'}</td>
+          <td>{[ad.city, ad.state].filter(Boolean).join(', ') || '—'}</td>
+          <td><StatusBadge status={ad.status} /></td><td>{Number(ad.views || 0).toLocaleString()}</td><td>{Number(ad.enquiries || 0).toLocaleString()}</td><td>{new Date(ad.created_at).toLocaleDateString('en-NG')}</td>
           <td><div className="seller-row-actions">
             <Link title="Edit advertisement" to={`/dashboard/ads/${ad.id}/edit`}><Pencil size={16} /></Link>
             {ad.status === 'approved' && <button title="Pause advertisement" disabled={workingId === ad.id} onClick={() => statusAction(ad, 'paused')}><Pause size={16} /></button>}
@@ -294,79 +343,332 @@ function AdvertisementManagement({ setToast }) {
             {ad.status === 'sold' && <button title="Mark as available" disabled={workingId === ad.id} onClick={() => statusAction(ad, 'approved')}><Play size={16} /></button>}
             <button title="Duplicate advertisement" disabled={workingId === ad.id} onClick={() => duplicate(ad)}><Copy size={16} /></button>
             {ad.status === 'approved' && <Link title="View product" to={`/ads/${ad.id}`}><ExternalLink size={16} /></Link>}
+            {['pending', 'approved'].includes(ad.status) && <Link title="Promote advertisement" to="/dashboard/promotions"><Megaphone size={16} /></Link>}
             <button title="Delete advertisement" disabled={workingId === ad.id} onClick={() => remove(ad)}><Trash2 size={16} /></button>
           </div></td>
         </tr>)}
       </tbody></table>
     </div>}
-    {pagination.pages > 1 && <div className="pagination"><button className="btn btn-white" disabled={filters.page <= 1} onClick={() => setFilters((current) => ({ ...current, page: current.page - 1 }))}>Previous</button><span>Page {pagination.page} of {pagination.pages} · {pagination.total} ads</span><button className="btn btn-white" disabled={filters.page >= pagination.pages} onClick={() => setFilters((current) => ({ ...current, page: current.page + 1 }))}>Next</button></div>}
+    {!loading && pagination.pages > 1 && <div className="pagination"><button className="btn btn-white" disabled={filters.page <= 1} onClick={() => setFilters((current) => ({ ...current, page: current.page - 1 }))}>Previous</button><span>Page {pagination.page} of {pagination.pages} · {pagination.total} ads</span><button className="btn btn-white" disabled={filters.page >= pagination.pages} onClick={() => setFilters((current) => ({ ...current, page: current.page + 1 }))}>Next</button></div>}
+  </section>;
+}
+
+function PromotionManagement({ setToast }) {
+  const [packages, setPackages] = useState([]);
+  const [listings, setListings] = useState([]);
+  const [promotions, setPromotions] = useState([]);
+  const [selectedAd, setSelectedAd] = useState('');
+  const [selectedPackage, setSelectedPackage] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [checkoutMessage, setCheckoutMessage] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    Promise.allSettled([
+      getPromotionPackages(),
+      getMyPromotions(),
+      getSellerAds({ limit: 50 }),
+    ]).then(([packageResult, promotionResult, adsResult]) => {
+      if (!active) return;
+      const errors = [];
+      if (packageResult.status === 'fulfilled') {
+        const available = (packageResult.value.data?.packages || [])
+          .filter((item) => item.is_active === true || Number(item.is_active) === 1);
+        setPackages(available);
+        if (available.length) setSelectedPackage(String(available[0].id));
+      } else {
+        errors.push(messageFrom(packageResult.reason, 'Promotion packages could not be loaded.'));
+      }
+      if (promotionResult.status === 'fulfilled') {
+        setPromotions(promotionResult.value.data?.promotions || []);
+      } else {
+        errors.push(messageFrom(promotionResult.reason, 'Your promotion history could not be loaded.'));
+      }
+      if (adsResult.status === 'fulfilled') {
+        const eligibleAds = (adsResult.value.data?.advertisements || [])
+          .filter((ad) => ['pending', 'approved'].includes(ad.status));
+        setListings(eligibleAds);
+        if (eligibleAds.length) setSelectedAd(String(eligibleAds[0].id));
+      } else {
+        errors.push(messageFrom(adsResult.reason, 'Your eligible advertisements could not be loaded.'));
+      }
+      setError(errors.join(' '));
+    }).finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const reference = searchParams.get('payment_reference');
+    if (!reference) return undefined;
+    let active = true;
+    setCheckoutMessage(searchParams.get('checkout_cancelled') === '1'
+      ? 'Checkout was closed before confirmation. Payment status is being checked with Bachs.'
+      : 'Checking your payment status with Bachs...');
+    setError('');
+    verifyPromotion(reference)
+      .then(async ({ data }) => {
+        if (!active) return;
+        if (data.status === 'succeeded') {
+          setCheckoutMessage('Bachs confirmed your payment. Your promotion status has been updated.');
+          const { data: promotionData } = await getMyPromotions();
+          if (active) setPromotions(promotionData.promotions || []);
+        } else if (data.status === 'failed') {
+          setCheckoutMessage(data.message || 'This checkout expired before payment was confirmed.');
+        } else {
+          setCheckoutMessage('Payment is still processing. Promotions activate only after Bachs confirms payment.');
+        }
+      })
+      .catch((requestError) => {
+        if (active) setError(messageFrom(requestError, 'Payment status could not be verified. Please refresh shortly.'));
+      })
+      .finally(() => {
+        if (active) {
+          const nextParams = new URLSearchParams(searchParams);
+          nextParams.delete('payment_reference');
+          nextParams.delete('checkout_cancelled');
+          setSearchParams(nextParams, { replace: true });
+        }
+      });
+    return () => { active = false; };
+  }, [searchParams, setSearchParams]);
+
+  const submitPromotion = async () => {
+    if (!selectedAd || !selectedPackage) return;
+    const packageInfo = packages.find((item) => String(item.id) === String(selectedPackage));
+    const advertisement = listings.find((item) => String(item.id) === String(selectedAd));
+    if (!packageInfo || !advertisement) {
+      setError('Choose an eligible advertisement and an available package before continuing.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    setCheckoutMessage('');
+    try {
+      const { data } = await initializePromotion({
+        advertisementId: Number(selectedAd),
+        packageId: Number(selectedPackage),
+      });
+      window.location.assign(data.authorizationUrl);
+      setToast('Continue securely on Bachs to complete your promotion payment.');
+    } catch (requestError) {
+      setError(messageFrom(requestError, 'Could not start Bachs checkout. Check your selections and try again.'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const selectedListing = listings.find((item) => String(item.id) === String(selectedAd));
+  const selectedPackageInfo = packages.find((item) => String(item.id) === String(selectedPackage));
+
+  return <section className="panel dashboard-panel promotion-panel">
+    <div className="panel-header"><div><h2>Promote Your Products</h2><p className="muted">Increase visibility with a paid marketplace placement.</p></div></div>
+    {error && <div className="notice error" role="alert">{error}</div>}
+    {checkoutMessage && <div className={`notice ${checkoutMessage.startsWith('Bachs confirmed') ? 'success' : 'promotion-notice'}`} role="status">{checkoutMessage}</div>}
+    {loading ? <div className="loading-card" role="status">Loading promotion options...</div> : (
+      <>
+        <div className="promotion-grid">
+          <div className="promotion-form panel mini-panel">
+            <label className="field"><span>Choose advertisement</span><select value={selectedAd} onChange={(event) => setSelectedAd(event.target.value)} disabled={!listings.length}><option value="">Select an eligible advertisement</option>{listings.map((ad) => <option key={ad.id} value={ad.id}>{ad.title}</option>)}</select></label>
+            {!listings.length && <div className="empty small">You have no eligible advertisements. Only pending or approved ads can be promoted.</div>}
+            {selectedListing && <div className="promotion-ad-preview">
+              {selectedListing.images?.[0]
+                ? <img src={resolveImageUrl(selectedListing.images[0])} alt="" />
+                : <div className="promotion-ad-placeholder" aria-hidden="true"><Megaphone size={22} /></div>}
+              <div><strong>{selectedListing.title}</strong><small>{selectedListing.status === 'pending' ? 'Pending review' : 'Approved'}</small></div>
+            </div>}
+            {packages.length === 0
+              ? <div className="empty small">No active promotion packages are available right now. Please check back later.</div>
+              : <div className="promotion-package-options" role="group" aria-label="Select a promotion package">
+                {packages.map((item) => (
+                  <button type="button" key={item.id} aria-pressed={selectedPackage === String(item.id)}
+                    className={`promotion-package ${selectedPackage === String(item.id) ? 'selected' : ''}`}
+                    onClick={() => setSelectedPackage(String(item.id))}>
+                    <span className="promotion-package-header"><strong>{item.name}</strong><span>{item.duration_days} days</span></span>
+                    <span className="promotion-package-price">{formatNaira(item.price)}</span>
+                    <span className="promotion-package-description">{item.description || 'Boost visibility for your listing.'}</span>
+                    {item.benefits && <span className="promotion-package-benefits">{item.benefits}</span>}
+                  </button>
+                ))}
+              </div>}
+            {selectedListing && selectedPackageInfo && (
+              <div className="promotion-summary">
+                <div><small>Advertisement</small><strong>{selectedListing.title}</strong></div>
+                <div><small>Package</small><strong>{selectedPackageInfo.name}</strong></div>
+                <div><small>Duration</small><strong>{selectedPackageInfo.duration_days} days</strong></div>
+                <div><small>Total</small><strong>{formatNaira(selectedPackageInfo.price)}</strong></div>
+              </div>
+            )}
+            <p className="promotion-checkout-note">Payment is securely processed by Bachs. Your promotion activates only after payment is confirmed.</p>
+            <button type="button" className="btn btn-primary" disabled={!selectedAd || !selectedPackage || !packages.length || submitting} onClick={submitPromotion}>{submitting ? 'Preparing secure checkout...' : 'Continue to Bachs checkout'}</button>
+          </div>
+        </div>
+        <div className="promotion-listings">
+          <h3>My promotions</h3>
+          {!promotions.length ? <div className="empty small">You do not have any promotions yet.</div> : (
+            <div className="table-wrap"><table><thead><tr><th>Advertisement</th><th>Package</th><th>Amount paid</th><th>Start date</th><th>Expiry date</th><th>Promotion status</th><th>Payment status</th></tr></thead><tbody>{promotions.map((promotion) => (
+              <tr key={promotion.id}>
+                <td>{promotion.advertisement_title || `Advertisement #${promotion.advertisement_id}`}</td>
+                <td>{promotion.package_name} · {promotion.duration_days} days</td>
+                <td>{promotion.payment_status === 'succeeded' ? formatNaira(promotion.amount) : '—'}</td>
+                <td>{promotion.starts_at ? new Date(promotion.starts_at).toLocaleDateString('en-NG') : '—'}</td>
+                <td>{promotion.expires_at ? new Date(promotion.expires_at).toLocaleDateString('en-NG') : '—'}</td>
+                <td><span className={`status status-${promotion.promotion_status || 'pending'}`}>{(promotion.promotion_status || 'pending').replaceAll('_', ' ')}</span></td>
+                <td><span className={`status status-${promotion.payment_status || 'pending'}`}>{promotion.payment_status || 'pending'}</span></td>
+              </tr>
+            ))}</tbody></table></div>
+          )}
+        </div>
+      </>
+    )}
   </section>;
 }
 
 function Analytics() {
   const { advertisementId } = useParams();
-  const [range, setRange] = useState(30);
+  const [range, setRange] = useState('30');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [selectedAd, setSelectedAd] = useState(advertisementId || '');
   const [ads, setAds] = useState([]);
+  const [adsError, setAdsError] = useState('');
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  useEffect(() => {
-    getSellerAds({ limit: 50 }).then(({ data }) => setAds(data.advertisements)).catch(() => setAds([]));
-  }, []);
+  const dateParams = useMemo(() => {
+    if (range === 'custom') {
+      return customFrom && customTo
+        ? { days: 365, from: customFrom, to: customTo }
+        : null;
+    }
+    if (range === 'year') {
+      const today = new Date();
+      const year = today.getFullYear();
+      const to = `${year}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      return { days: 365, from: `${year}-01-01`, to };
+    }
+    return { days: Number(range) };
+  }, [range, customFrom, customTo]);
+
   useEffect(() => {
     let active = true;
+    getSellerAds({ limit: 50 })
+      .then(({ data }) => active && setAds(data.advertisements || []))
+      .catch((requestError) => {
+        if (active) setAdsError(messageFrom(requestError, 'Your advertisements could not be loaded.'));
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!dateParams) {
+      setLoading(false);
+      setError('Choose both a start date and an end date to view a custom range.');
+      return () => { active = false; };
+    }
     setLoading(true);
     setError('');
+    setAnalytics(null);
     const request = selectedAd
-      ? getAdvertisementAnalytics(selectedAd, { days: range })
-      : getSellerAnalytics({ days: range });
+      ? getAdvertisementAnalytics(selectedAd, dateParams)
+      : getSellerAnalytics(dateParams);
     request.then(({ data }) => active && setAnalytics(data))
-      .catch((requestError) => active && setError(messageFrom(requestError, 'Could not load analytics.')))
+      .catch((requestError) => active && setError(messageFrom(requestError, 'Unable to load analytics data. Please refresh the page.')))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [range, selectedAd]);
+  }, [dateParams, selectedAd]);
 
   const chartData = useMemo(() => {
     if (!analytics?.range) return [];
-    const from = new Date(`${analytics.range.from}T00:00:00`);
-    const rows = new Map(analytics.trackedViews.map((item) => [item.date, { views: item.views }]));
-    for (const item of analytics.enquiries) rows.set(item.date, { ...rows.get(item.date), enquiries: item.enquiries });
-    return Array.from({ length: range }, (_, index) => {
-      const date = new Date(`${analytics.range.from}T00:00:00Z`);
+    const views = new Map(analytics.trackedViews.map((item) => [item.date, item.views]));
+    const enquiries = new Map(analytics.enquiries.map((item) => [item.date, item.enquiries]));
+    const start = new Date(`${analytics.range.from}T00:00:00Z`);
+    const end = new Date(`${analytics.range.to}T00:00:00Z`);
+    const days = Math.max(1, Math.ceil((end - start) / 86400000) + 1);
+    return Array.from({ length: days }, (_, index) => {
+      const date = new Date(start);
       date.setUTCDate(date.getUTCDate() + index);
       const key = date.toISOString().slice(0, 10);
-      return { date: key, label: date.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }), views: rows.get(key)?.views || 0, enquiries: rows.get(key)?.enquiries || 0 };
+      return {
+        date: key,
+        label: date.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', timeZone: 'UTC' }),
+        views: views.get(key) || 0,
+        enquiries: enquiries.get(key) || 0,
+      };
     });
-  }, [analytics, range]);
+  }, [analytics]);
+
+  const enquiriesInRange = analytics?.enquiries.reduce((sum, item) => sum + item.enquiries, 0) || 0;
+  const viewsInRange = analytics?.trackedViews.reduce((sum, item) => sum + item.views, 0) || 0;
 
   return <>
     <section className="panel analytics-toolbar">
       <div><h2>Performance overview</h2><p className="muted">All metrics come from marketplace views and buyer enquiries.</p></div>
       <div className="seller-analytics-controls">
         <label><span>Product</span><select value={selectedAd} onChange={(event) => setSelectedAd(event.target.value)}><option value="">All advertisements</option>{ads.map((ad) => <option key={ad.id} value={ad.id}>{ad.title}</option>)}</select></label>
-        <label><span>Date range</span><select value={range} onChange={(event) => setRange(Number(event.target.value))}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select></label>
+        <label><span>Date range</span><select value={range} onChange={(event) => setRange(event.target.value)}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="year">This year</option><option value="custom">Custom range</option></select></label>
+        {range === 'custom' && <div className="seller-custom-date-range">
+          <label><span>From</span><input aria-label="Analytics start date" type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} /></label>
+          <label><span>To</span><input aria-label="Analytics end date" type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} /></label>
+        </div>}
       </div>
     </section>
+    {adsError && <div className="notice error" role="alert">{adsError}</div>}
     {error && <div className="notice error" role="alert">{error}</div>}
-    {analytics && <div className="stats-grid analytics-summary">
-      <StatCard label="Total product views" value={analytics.totalViews} Icon={Eye} />
-      <StatCard label="Advertisements" value={analytics.totalAdvertisements} Icon={FolderOpen} />
-      <StatCard label="Enquiries in range" value={analytics.enquiries.reduce((sum, item) => sum + item.enquiries, 0)} Icon={MessageSquareText} />
-      <StatCard label="Tracked views in range" value={analytics.trackedViews.reduce((sum, item) => sum + item.views, 0)} Icon={BarChart3} />
+    {loading && <div className="stats-grid analytics-summary" aria-label="Loading analytics">{[1, 2, 3, 4, 5, 6, 7, 8].map((item) => <div key={item} className="stat-card skeleton" />)}</div>}
+    {!loading && analytics && <div className="stats-grid analytics-summary">
+      <StatCard label="Total advertisements" value={analytics.totalAdvertisements} Icon={FolderOpen} />
+      <StatCard label="Active advertisements" value={analytics.activeAdvertisements} Icon={CheckCircle2} />
+      <StatCard label="Pending review" value={analytics.pendingAdvertisements} Icon={TimerReset} />
+      <StatCard label="Total views" value={analytics.totalViews} Icon={Eye} />
+      <StatCard label="Views in range" value={viewsInRange} Icon={BarChart3} />
+      <StatCard label="Total enquiries" value={analytics.totalEnquiries} Icon={MessageSquareText} />
+      <StatCard label="Enquiries in range" value={enquiriesInRange} Icon={MessageSquareText} />
+      <StatCard label="Favourites" value={analytics.totalFavourites} Icon={Heart} />
     </div>}
-    {loading ? <div className="panel loading-card">Loading analytics...</div> : analytics && <>
+    {!loading && analytics && <>
       <p className="analytics-history-note"><CircleHelp size={15} /> {analytics.historyNote}</p>
+      <p className="analytics-period-total">{viewsInRange.toLocaleString()} tracked views and {enquiriesInRange.toLocaleString()} enquiries from {analytics.range.from} to {analytics.range.to}.</p>
       <section className="seller-chart-grid">
         <MetricChart title="Daily product views" metric="views" data={chartData} color="#1264D8" />
         <MetricChart title="Buyer enquiries over time" metric="enquiries" data={chartData} color="#16A34A" />
       </section>
+      <StatusDistribution data={analytics.statusDistribution} />
       <section className="panel dashboard-panel">
-        <div className="panel-header"><div><h2>Top-performing advertisements</h2><p className="muted">Ranked by real cumulative views and enquiry count</p></div></div>
-        {!analytics.topAdvertisements.length ? <div className="empty small">No advertisement activity yet.</div> : <div className="table-wrap"><table><thead><tr><th>Product</th><th>Status</th><th>Total views</th><th>Enquiries</th><th>Price</th></tr></thead><tbody>{analytics.topAdvertisements.map((ad) => <tr key={ad.id}><td><Link className="link" to={`/dashboard/ads/${ad.id}/edit`}>{ad.title}</Link></td><td><StatusBadge status={ad.status} /></td><td>{ad.views.toLocaleString()}</td><td>{ad.enquiries}</td><td>{formatNaira(ad.price)}</td></tr>)}</tbody></table></div>}
+        <div className="panel-header"><div><h2>Advertisement performance</h2><p className="muted">Ranked by cumulative views, then enquiries.</p></div></div>
+        {!analytics.topAdvertisements.length ? <div className="empty small">You have not posted any advertisements yet.</div> : <div className="table-wrap"><table><thead><tr><th>Advertisement</th><th>Status</th><th>Views</th><th>Enquiries</th><th>Favourites</th><th>Category</th><th>Date posted</th></tr></thead><tbody>{analytics.topAdvertisements.map((ad) => <tr key={ad.id}><td><Link className="link" to={`/dashboard/ads/${ad.id}/edit`}>{ad.title}</Link><small className="analytics-ad-location">{[ad.city, ad.state].filter(Boolean).join(', ')}</small></td><td><StatusBadge status={ad.status} /></td><td>{ad.views.toLocaleString()}</td><td>{ad.enquiries.toLocaleString()}</td><td>{ad.favourites.toLocaleString()}</td><td>{ad.category_name}</td><td>{new Date(ad.created_at).toLocaleDateString('en-NG')}</td></tr>)}</tbody></table></div>}
       </section>
     </>}
   </>;
+}
+
+function StatusDistribution({ data }) {
+  const statusLabels = {
+    approved: 'Active',
+    pending: 'Pending',
+    rejected: 'Rejected',
+    paused: 'Paused',
+    suspended: 'Suspended',
+    changes_requested: 'Changes requested',
+    sold: 'Sold',
+    expired: 'Expired',
+  };
+  const total = data.reduce((sum, item) => sum + item.count, 0);
+  return <section className="panel status-distribution">
+    <div className="panel-header"><div><h2>Advertisement status</h2><p className="muted">Your listings by their current review and availability status.</p></div></div>
+    {!total ? <div className="empty small">Status distribution will appear after you post an advertisement.</div> : <div className="status-distribution-list">
+      {data.map((item) => (
+        <div className="status-distribution-row" key={item.status}>
+          <span>{statusLabels[item.status] || item.status.replaceAll('_', ' ')}</span>
+          <div className="status-distribution-track"><i style={{ width: `${(item.count / total) * 100}%` }} /></div>
+          <strong>{item.count}</strong>
+        </div>
+      ))}
+    </div>}
+  </section>;
 }
 
 function MetricChart({ title, metric, data, color }) {
@@ -482,7 +784,7 @@ function Verification({ setToast }) {
         if (!active) return;
         const saved = verificationResult.data.verification;
         setVerification(saved);
-        setCategories(categoryResult.data.categories || []);
+        setCategories(categoryResult || []);
         if (saved) {
           setForm({
             verificationType: saved.verification_type || 'registered_business',

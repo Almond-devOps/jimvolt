@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BadgeCheck, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getVerifiedSellers } from '../services/listingService.js';
+import UserAvatar from '../components/UserAvatar.jsx';
 
 export default function SellersPage() {
   const [sellers, setSellers] = useState([]);
@@ -24,7 +25,7 @@ export default function SellersPage() {
       {loading ? <div className="empty">Loading verified sellers...</div> : !sellers.length ? <div className="empty">No verified sellers with active listings yet.</div> : (
         <div className="sellers sellers-page-grid">{sellers.map((seller) => (
           <Link className="seller-card" key={seller.id} to={`/sellers/${seller.id}`}>
-            {seller.profileImage ? <img className="avatar" src={seller.profileImage} alt="" /> : <span className="avatar">{seller.name?.[0] || 'S'}</span>}
+            <UserAvatar src={seller.profileImage} name={seller.name} className="avatar" />
             <span><strong>{seller.name} <BadgeCheck size={16} className="ok" /></strong><small><MapPin size={13} /> {seller.state} · {seller.ads} active adverts</small></span>
           </Link>
         ))}</div>

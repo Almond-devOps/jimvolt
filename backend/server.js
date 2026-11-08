@@ -16,7 +16,9 @@ const reportRoutes = require('./routes/reportRoutes')
 const discoveryRoutes = require('./routes/discoveryRoutes')
 const { router: seoRouter } = require('./routes/seoRoutes')
 const bachsTestRoutes = require('./routes/bachsTestRoutes')
+const paymentRoutes = require('./routes/paymentRoutes')
 const { ensureInitialCategories } = require('./models/categoryModel')
+const promotionModel = require('./models/promotionModel')
 const { errorHandler, notFound } = require('./middleware/errorMiddleware')
 const { createSocketServer } = require('./socket')
 const { getAllowedOrigins } = require('./utils/allowedOrigins')
@@ -34,7 +36,12 @@ app.use(cors({
 app.use((req, res, next) => {
   initializeBackend().then(() => next(), next)
 })
-app.use(express.json({ limit: '1mb' }))
+app.use(express.json({
+  limit: '1mb',
+  verify(req, res, buffer) {
+    if (req.originalUrl.startsWith('/api/payments/webhook')) req.rawBody = Buffer.from(buffer)
+  },
+}))
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { dotfiles: 'deny', maxAge: '1d' }))
 app.use(express.static(path.resolve(__dirname, '../frontend/dist'), { index: false, maxAge: '1h' }))
 
@@ -67,6 +74,7 @@ app.use('/api/favorites', discoveryRoutes.favorites)
 app.use('/api/recently-viewed', discoveryRoutes.recentlyViewed)
 app.use('/api/admin', adminRoutes)
 app.use('/api/tests/bachs', bachsTestRoutes)
+app.use('/api/payments', paymentRoutes)
 app.use('/', seoRouter)
 app.use(notFound)
 app.use(errorHandler)
@@ -96,6 +104,13 @@ async function startServer({ port = Number(process.env.PORT || 5000), host } = {
   const io = createSocketServer(server, allowedOrigins)
   app.set('io', io)
   server.io = io
+  const promotionExpiryTimer = setInterval(() => {
+    promotionModel.expireDuePromotions().catch((error) => {
+      console.error('Could not expire due promotions:', error.message)
+    })
+  }, 60 * 1000)
+  promotionExpiryTimer.unref()
+  server.once('close', () => clearInterval(promotionExpiryTimer))
 
   return new Promise((resolve, reject) => {
     server.listen(port, host, () => {

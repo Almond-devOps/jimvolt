@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import {
   BarChart3, BriefcaseBusiness, ChevronLeft, ChevronRight, CreditCard, FileCheck2,
-  Flag, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Tags, Users, X,
+  Flag, LayoutDashboard, Menu, Settings, ShieldCheck, Tags, Users, X, Megaphone,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
+import LogoutAction from '../components/LogoutAction.jsx';
 
 const navigation = [
   { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -15,13 +16,13 @@ const navigation = [
   { to: '/admin/categories', label: 'Categories', icon: Tags },
   { to: '/admin/reports', label: 'Reports', icon: Flag },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard },
+  { to: '/admin/promotion-packages', label: 'Promotion packages', icon: Megaphone },
   { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function AdminLayout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -39,19 +40,14 @@ export default function AdminLayout() {
     };
   }, [mobileOpen]);
 
-  const signOut = () => {
-    logout();
-    navigate('/admin/login', { replace: true });
-  };
-
   return (
     <div className={`admin-console${collapsed ? ' is-collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}>
       {mobileOpen && <button className="admin-drawer-overlay" type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <aside className="admin-sidebar" id="admin-navigation">
         <div className="admin-sidebar-heading">
           <NavLink to="/admin/dashboard" className="logo admin-brand" onClick={() => setMobileOpen(false)}>
-          <span className="logo-mark"><ShieldCheck size={19} aria-hidden="true" /></span>
-          <span>Jimvolt <small>ADMIN</small></span>
+          <img className="brand-logo admin-brand-image" src="/jimvolt-logo.png" alt="Jimvolt" />
+          <span><small>ADMIN</small></span>
           </NavLink>
           <button
             type="button"
@@ -80,7 +76,7 @@ export default function AdminLayout() {
             <span className="admin-avatar">{user?.full_name?.trim()?.[0]?.toUpperCase() || 'A'}</span>
             <span className="admin-account-name"><strong>{user?.full_name || 'Administrator'}</strong><small>{user?.role?.replace('_', ' ')}</small></span>
           </div>
-          <button type="button" className="admin-logout" onClick={signOut} title={collapsed ? 'Log out' : undefined}><LogOut size={17} /><span>Log out</span></button>
+          <LogoutAction className="admin-logout" label="Log out" redirectTo="/admin/login" title={collapsed ? 'Log out' : undefined} />
         </div>
       </aside>
       <main className="admin-main">

@@ -8,6 +8,7 @@ import { addFavourite, removeFavourite } from '../services/userService.js';
 import { formatNaira, timeAgo } from '../utils/format.js';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
+import UserAvatar from '../components/UserAvatar.jsx';
 
 export default function AdDetailPage() {
   const { id } = useParams();
@@ -135,7 +136,7 @@ export default function AdDetailPage() {
           </div>
           <div className="panel seller-panel">
             <div className="seller-profile">
-              {seller.profileImage ? <img src={seller.profileImage} alt="" /> : <span className="avatar">{seller.name?.charAt(0) || 'S'}</span>}
+              <UserAvatar src={seller.profileImage} name={seller.name} className="avatar" />
               <div><strong>{seller.name || 'Seller'}</strong><p className="muted">{seller.is_verified ? <VerifiedBusinessBadge verified /> : 'Jimvolt marketplace seller'}</p></div>
             </div>
             <p className="seller-trust"><ShieldCheck size={16} /> Keep conversations on Jimvolt and inspect items before payment.</p>

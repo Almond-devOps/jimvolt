@@ -67,5 +67,6 @@ router.post(
 )
 
 router.get('/me', authenticate, asyncHandler(authController.me))
+router.post('/logout', authenticate, asyncHandler(authController.logout))
 
 module.exports = router

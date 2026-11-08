@@ -1,5 +1,6 @@
 const { pool } = require('../config/database')
 const discoveryModel = require('./discoveryModel')
+const promotionModel = require('./promotionModel')
 
 function json(value) {
   return value === undefined || value === null ? null : JSON.stringify(value)
@@ -293,6 +294,11 @@ async function moderateAd({ id, administratorId, action, status, reason, feature
        WHERE id = ?`,
       [nextStatus, nextFeatured, reason ?? null, nextStatus, id],
     )
+    if (nextStatus === 'approved') {
+      await promotionModel.activateApprovedAdvertisement(connection, id)
+    } else if (ad.status === 'approved') {
+      await promotionModel.pauseAdvertisementPromotions(connection, id)
+    }
     if ((ad.status === 'approved') !== (nextStatus === 'approved')) {
       await discoveryModel.notifyAvailability(connection, { id, title: ad.title, status: nextStatus })
     }

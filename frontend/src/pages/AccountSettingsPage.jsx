@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { KeyRound, Mail, Phone, Upload, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { KeyRound, Mail } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { changePassword, getUserProfile, updateUserSettings } from '../services/userService.js';
+import LogoutAction from '../components/LogoutAction.jsx';
 
 export default function AccountSettingsPage() {
   const navigate = useNavigate();
-  const { logout, refreshUser } = useAuth();
+  const location = useLocation();
+  const { refreshUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [message, setMessage] = useState(null);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
-  const [settingsForm, setSettingsForm] = useState({ email: '', phone: '', profileImage: '', currentPassword: '' });
+  const [settingsForm, setSettingsForm] = useState({ email: '', phone: '', currentPassword: '' });
   const mountedRef = useRef(false);
 
   const loadProfile = async () => {
@@ -25,7 +27,6 @@ export default function AccountSettingsPage() {
       setSettingsForm({
         email: data.user.email || '',
         phone: data.user.phone || '',
-        profileImage: data.user.profile_image || '',
       });
     } catch (error) {
       if (mountedRef.current) {
@@ -41,6 +42,12 @@ export default function AccountSettingsPage() {
     loadProfile();
     return () => { mountedRef.current = false; };
   }, []);
+
+  useEffect(() => {
+    if (!loading && location.hash === '#change-password') {
+      document.getElementById('change-password')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [loading, location.hash]);
 
   const saveSettings = async (event) => {
     event.preventDefault();
@@ -64,11 +71,6 @@ export default function AccountSettingsPage() {
     } catch (error) {
       setMessage({ type: 'error', text: error.response?.data?.message || 'Unable to change your password.' });
     }
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
   };
 
   if (loading) {
@@ -108,16 +110,11 @@ export default function AccountSettingsPage() {
               <input value={settingsForm.phone} onChange={(event) => setSettingsForm((current) => ({ ...current, phone: event.target.value }))} />
             </label>
 
-            <label className="field">
-              <span>Profile image URL</span>
-              <input value={settingsForm.profileImage} onChange={(event) => setSettingsForm((current) => ({ ...current, profileImage: event.target.value }))} />
-            </label>
-
             <button type="submit" className="btn btn-primary">Save profile</button>
           </form>
         </div>
 
-        <div className="panel settings-panel">
+        <div className="panel settings-panel" id="change-password">
           <h2>Change password</h2>
           <form onSubmit={savePassword} className="settings-form">
             <label className="field">
@@ -135,7 +132,7 @@ export default function AccountSettingsPage() {
         <div className="panel settings-panel action-panel">
           <h2>Account actions</h2>
           <button type="button" className="btn btn-white" onClick={() => navigate('/profile')}><Mail size={18} /> View profile</button>
-          <button type="button" className="btn btn-white" onClick={handleLogout}><LogOut size={18} /> Log out</button>
+          <LogoutAction className="btn btn-logout" label="Log out" />
         </div>
       </div>
     </div>

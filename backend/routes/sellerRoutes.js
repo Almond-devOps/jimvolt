@@ -26,9 +26,28 @@ router.get('/public/:slug', param('slug').matches(/^[a-z0-9-]{1,180}$/), asyncHa
 router.use(authenticate)
 
 router.get('/dashboard', asyncHandler(sellerController.dashboard))
-router.get('/ads', query('status').optional().isIn(['pending', 'approved', 'rejected', 'paused', 'sold', 'expired']), query('q').optional().isLength({ max: 100 }), query('sort').optional().isIn(['newest', 'oldest', 'views', 'price_asc', 'price_desc']), query('page').optional().isInt({ min: 1 }), query('limit').optional().isInt({ min: 1, max: 50 }), asyncHandler(sellerController.advertisements))
-router.get('/analytics', query('days').optional().isIn(['7', '30', '90', '365']), query('from').optional().isISO8601({ strict: true }), query('to').optional().isISO8601({ strict: true }), asyncHandler(sellerController.analytics))
-router.get('/analytics/:advertisementId', param('advertisementId').isInt({ min: 1 }), query('days').optional().isIn(['7', '30', '90', '365']), query('from').optional().isISO8601({ strict: true }), query('to').optional().isISO8601({ strict: true }), asyncHandler(sellerController.analytics))
+router.get('/ads',
+  query('status').optional({ values: 'falsy' }).isIn(['pending', 'approved', 'rejected', 'paused', 'suspended', 'changes_requested', 'sold', 'expired'])
+    .withMessage('Choose a supported advertisement status.'),
+  query('q').optional({ values: 'falsy' }).isLength({ max: 100 })
+    .withMessage('Search must be 100 characters or less.'),
+  query('sort').optional({ values: 'falsy' }).isIn(['newest', 'oldest', 'views', 'price_asc', 'price_desc'])
+    .withMessage('Choose a supported sort order.'),
+  query('page').optional({ values: 'falsy' }).isInt({ min: 1 })
+    .withMessage('Page must be a positive integer.'),
+  query('limit').optional({ values: 'falsy' }).isInt({ min: 1, max: 50 })
+    .withMessage('Page size must be between 1 and 50.'),
+  asyncHandler(sellerController.advertisements),
+)
+const analyticsDateFields = [
+  query('days').optional({ values: 'falsy' }).isIn(['7', '30', '90', '365']),
+  query('from').optional({ values: 'falsy' }).isISO8601({ strict: true })
+    .withMessage('Enter a valid start date.'),
+  query('to').optional({ values: 'falsy' }).isISO8601({ strict: true })
+    .withMessage('Enter a valid end date.'),
+]
+router.get('/analytics', ...analyticsDateFields, asyncHandler(sellerController.analytics))
+router.get('/analytics/:advertisementId', param('advertisementId').isInt({ min: 1 }), ...analyticsDateFields, asyncHandler(sellerController.analytics))
 router.get('/profile', asyncHandler(sellerController.profile))
 router.put(
   '/profile',

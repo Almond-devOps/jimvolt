@@ -3,6 +3,7 @@ const { body, param } = require('express-validator')
 const userController = require('../controllers/userController')
 const authenticate = require('../middleware/authMiddleware')
 const { asyncHandler } = require('../middleware/errorMiddleware')
+const { profileImageUpload } = require('../middleware/profileImageUpload')
 
 const router = express.Router()
 
@@ -16,25 +17,17 @@ router.post('/favourites/:id', param('id').isInt({ min: 1 }), asyncHandler(userC
 router.delete('/favourites/:id', param('id').isInt({ min: 1 }), asyncHandler(userController.removeFavorite))
 router.put(
   '/profile',
+  profileImageUpload,
   body('fullName').trim().isLength({ min: 2, max: 120 }).withMessage('Full name must be between 2 and 120 characters.'),
   body('phone').optional({ values: 'falsy' }).trim().isLength({ min: 8, max: 32 }).withMessage('Phone number is too long.'),
-  body('profileImage')
-    .optional({ values: 'falsy' })
-    .isURL({ protocols: ['http', 'https'], require_protocol: true })
-    .isLength({ max: 2048 })
-    .withMessage('Profile image must be a valid HTTP or HTTPS URL.'),
   asyncHandler(userController.updateProfile),
 )
+router.delete('/profile/image', asyncHandler(userController.removeProfileImageFromAccount))
 router.put(
   '/settings',
   body('email').optional({ values: 'falsy' }).trim().isEmail().withMessage('Enter a valid email address.').isLength({ max: 254 }),
   body('currentPassword').optional({ values: 'falsy' }).isString().isLength({ max: 72 }),
   body('phone').optional({ values: 'falsy' }).trim().isLength({ min: 8, max: 32 }).withMessage('Phone number is too long.'),
-  body('profileImage')
-    .optional({ values: 'falsy' })
-    .isURL({ protocols: ['http', 'https'], require_protocol: true })
-    .isLength({ max: 2048 })
-    .withMessage('Profile image must be a valid HTTP or HTTPS URL.'),
   asyncHandler(userController.updateSettings),
 )
 router.put(

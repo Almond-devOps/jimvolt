@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BadgeCheck, ShieldCheck, MapPin, ArrowRight } from 'lucide-react';
-import { CATEGORIES } from '../utils/constants.js';
+import { CATEGORIES, FALLBACK_CATEGORY_IMAGE } from '../utils/constants.js';
 import ListingSection from '../components/ListingSection.jsx';
+import ImageWithFallback from '../components/ImageWithFallback.jsx';
+import UserAvatar from '../components/UserAvatar.jsx';
 import useAsync from '../hooks/useAsync.js';
-import { getFeatured, getRecent, getPopular, getPopularLocations, getVerifiedSellers } from '../services/listingService.js';
+import { getPromoted, getRecent, getPopular, getPopularLocations, getVerifiedSellers } from '../services/listingService.js';
 
 export default function Home() {
   useEffect(() => { document.title = 'Jimvolt | Buy and Sell Solar, Inverters and Batteries in Nigeria'; }, []);
@@ -26,16 +28,16 @@ export default function Home() {
 
       <section className="container cats-wrap" aria-label="Categories">
         <div className="cats">
-          {CATEGORIES.map(({ slug, name, icon: Icon }) => (
+          {CATEGORIES.map(({ slug, name, image }) => (
             <Link key={slug} to={`/ads?category=${slug}`} className="cat">
-              <span className="cat-icon"><Icon size={22} aria-hidden="true" /></span>
+              <ImageWithFallback className="cat-image" src={image} fallbackSrc={FALLBACK_CATEGORY_IMAGE} alt={name} loading="lazy" decoding="async" />
               <span>{name}</span>
             </Link>
           ))}
         </div>
       </section>
 
-      <ListingSection title="Featured adverts" subtitle="Hand-picked from trusted sellers" loader={getFeatured} to="/ads?featured=1" />
+      <ListingSection title="Featured Products" subtitle="Sponsored placements from renewable-energy sellers" loader={getPromoted} to="/ads?featured=true" />
       <ListingSection title="Recently posted" loader={getRecent} to="/ads?sort=newest" skeletons={8} />
 
       <section className="container">
@@ -58,7 +60,7 @@ export default function Home() {
         <div className="sellers">
           {(sellers.data || []).map((s) => (
             <Link to={`/sellers/${s.id}`} key={s.id} className="seller-card">
-              {s.profileImage ? <img className="avatar" src={s.profileImage} alt="" /> : <span className="avatar">{s.name?.[0] || 'S'}</span>}
+              <UserAvatar src={s.profileImage} name={s.name} className="avatar" />
               <span>
                 <strong>{s.name} <BadgeCheck size={16} className="ok" aria-label="Verified" /></strong>
                 <small>{s.state} · {s.ads} adverts</small>

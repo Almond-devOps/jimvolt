@@ -41,6 +41,11 @@ function dateRange(query) {
     error.statusCode = 400
     throw error
   }
+  if (Boolean(query.from) !== Boolean(query.to)) {
+    const error = new Error('Choose both a start date and an end date.')
+    error.statusCode = 400
+    throw error
+  }
   const end = query.to ? new Date(`${query.to}T00:00:00.000Z`) : new Date()
   const start = query.from
     ? new Date(`${query.from}T00:00:00.000Z`)
@@ -51,7 +56,7 @@ function dateRange(query) {
     throw error
   }
   if ((end - start) / 86400000 > 365) {
-    const error = new Error('Analytics date ranges cannot exceed 365 days.')
+    const error = new Error('Analytics date ranges cannot exceed one year.')
     error.statusCode = 400
     throw error
   }
@@ -319,6 +324,7 @@ module.exports = {
   advertisements,
   analytics,
   dashboard,
+  dateRange,
   duplicateAdvertisement,
   markNotificationRead,
   notifications,

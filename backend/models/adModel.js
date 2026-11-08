@@ -5,6 +5,10 @@ const detailsQuery = `
   SELECT a.id, a.user_id, a.category_id, a.title, a.brand, a.specifications, a.slug, a.description,
          a.price, a.condition_type, a.state, a.city, a.phone, a.whatsapp,
          a.status, a.views, a.is_featured, a.created_at, a.updated_at,
+         EXISTS (SELECT 1 FROM promotions pr WHERE pr.advertisement_id = a.id
+           AND pr.status = 'active' AND pr.expires_at > CURRENT_TIMESTAMP) AS is_sponsored,
+         (SELECT MAX(pr.expires_at) FROM promotions pr WHERE pr.advertisement_id = a.id
+           AND pr.status = 'active' AND pr.expires_at > CURRENT_TIMESTAMP) AS promotion_expires_at,
          c.name AS category_name, c.slug AS category_slug,
          u.full_name AS seller_name, u.phone AS seller_phone,
          u.profile_image AS seller_profile_image,
@@ -79,7 +83,7 @@ async function findSearchSuggestions(search, limit = 8) {
      FROM advertisements a
      JOIN categories c ON c.id = a.category_id
      WHERE a.status = 'approved' AND ${conditions.join(' AND ')}
-     ORDER BY a.is_featured DESC, a.views DESC, a.created_at DESC
+    ORDER BY is_sponsored DESC, a.is_featured DESC, a.views DESC, a.created_at DESC
      LIMIT ?`,
     [...values, limit],
   )
@@ -187,8 +191,9 @@ async function findOwnedAds({ userId, status, search, sortBy, limit, offset }) {
     values.push(status)
   }
   if (search) {
-    where.push('(a.title LIKE ? OR a.brand LIKE ? OR a.description LIKE ?)')
-    values.push(`%${search}%`, `%${search}%`, `%${search}%`)
+    where.push(`(a.title LIKE ? OR a.brand LIKE ? OR a.description LIKE ?
+      OR c.name LIKE ? OR a.state LIKE ? OR a.city LIKE ?)`)
+    values.push(...Array(6).fill(`%${search}%`))
   }
   const orderBy = {
     newest: 'a.created_at DESC, a.id DESC',
@@ -223,8 +228,10 @@ async function countOwnedAds({ userId, status, search }) {
     values.push(status)
   }
   if (search) {
-    where.push('(title LIKE ? OR brand LIKE ? OR description LIKE ?)')
-    values.push(`%${search}%`, `%${search}%`, `%${search}%`)
+    where.push(`(title LIKE ? OR brand LIKE ? OR description LIKE ?
+      OR category_id IN (SELECT id FROM categories WHERE name LIKE ?)
+      OR state LIKE ? OR city LIKE ?)`)
+    values.push(...Array(6).fill(`%${search}%`))
   }
   const [rows] = await pool.execute(
     `SELECT COUNT(*) AS total FROM advertisements WHERE ${where.join(' AND ')}`,

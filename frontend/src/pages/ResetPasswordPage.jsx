@@ -57,6 +57,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
+        <Link to="/" className="auth-logo" aria-label="Jimvolt home"><img className="brand-logo auth-brand-image" src="/jimvolt-logo.png" alt="Jimvolt" /></Link>
         <div className="auth-header">
           <div className="auth-badge"><ShieldCheck size={22} /></div>
           <div>

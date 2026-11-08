@@ -179,7 +179,7 @@ async function renderPublicPage(req, res, next) {
     const description = 'Compare solar panels, inverters, batteries and renewable energy products from sellers across Nigeria.'
     const content = `<main><h1>Renewable energy products and services in Nigeria</h1><p>${escapeHtml(description)}</p><a href="/ads">Browse approved advertisements</a></main>`
     const page = renderContent(template, {
-      metadata: { title, description, canonical: siteUrl, type: 'website' },
+      metadata: { title, description, canonical: siteUrl, image: new URL('/jimvolt-logo.png', siteUrl).href, type: 'website' },
       structuredData: siteSchemas(siteUrl),
     })
     page.html = page.html.replace('<div id="root"></div>', `<div id="root">${content}</div>`)

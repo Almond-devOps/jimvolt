@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BadgeCheck, BriefcaseBusiness, ClipboardList, CreditCard, RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { BadgeCheck, BriefcaseBusiness, ClipboardList, CreditCard, RefreshCw, ShieldCheck, Users, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../services/api.js';
 import { formatNaira } from '../utils/format.js';
@@ -59,8 +59,13 @@ export default function AdminDashboardPage() {
           <span className="admin-metric-icon"><CreditCard size={20} aria-hidden="true" /></span>
           <span><small>Successful payments</small><strong>{Number(stats.successfulPayments || 0).toLocaleString('en-NG')}</strong></span>
         </article>
+        <article className="admin-metric-card">
+          <span className="admin-metric-icon"><TrendingUp size={20} aria-hidden="true" /></span>
+          <span><small>Active promotions</small><strong>{Number(stats.activePromotions || 0).toLocaleString('en-NG')}</strong></span>
+        </article>
       </div>
       <AdminAnalytics />
+      <MonetizationSummary />
       <div className="admin-dashboard-grid">
         <section className="panel">
           <div className="panel-header"><div><h2>Recent advertisements</h2><p className="muted">Latest listings across the marketplace.</p></div></div>
@@ -107,6 +112,46 @@ const chartSeries = [
   { key: 'advertisementGrowth', label: 'Advertisements', color: '#16A36A' },
   { key: 'revenue', label: 'Verified revenue', color: '#8B5CF6' },
 ];
+
+function MonetizationSummary() {
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    api.get('/admin/monetization')
+      .then(({ data }) => active && setSummary(data))
+      .catch((requestError) => active && setError(requestError.response?.data?.message || 'Could not load monetization summary.'))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, []);
+
+  if (loading) return <section className="panel admin-analytics-panel"><div className="loading-card">Loading monetization summary...</div></section>;
+  if (error) return <section className="panel admin-analytics-panel"><div className="notice error" role="alert">{error}</div></section>;
+  if (!summary) return null;
+
+  const stats = summary.stats || {};
+  return <section className="panel admin-analytics-panel">
+    <div className="panel-header"><div><h2>Revenue & Monetization</h2><p className="muted">Successful payment value, active campaigns and recent performance.</p></div></div>
+    <div className="stats-grid analytics-summary">
+      <StatCardMini label="Total revenue" value={formatNaira(stats.revenue || 0)} />
+      <StatCardMini label="Today" value={formatNaira(stats.todayRevenue || 0)} />
+      <StatCardMini label="Monthly" value={formatNaira(stats.monthRevenue || 0)} />
+      <StatCardMini label="Pending" value={Number(stats.pendingPayments || 0).toLocaleString('en-NG')} />
+      <StatCardMini label="Failed" value={Number(stats.failedPayments || 0).toLocaleString('en-NG')} />
+    </div>
+    {summary.topPromotions?.length ? (
+      <div className="table-wrap"><table><thead><tr><th>Campaign</th><th>Seller</th><th>Impressions</th><th>Clicks</th></tr></thead><tbody>{summary.topPromotions.map((item) => (
+        <tr key={item.id}><td>{item.title || 'Promotion'}</td><td>{item.seller_name}</td><td>{Number(item.impressions || 0).toLocaleString('en-NG')}</td><td>{Number(item.clicks || 0).toLocaleString('en-NG')}</td></tr>
+      ))}</tbody></table></div>
+    ) : <p className="muted">No active promotions are available yet.</p>}
+  </section>;
+}
+
+function StatCardMini({ label, value }) {
+  return <div className="stat-card"><div className="stat-icon"><CreditCard size={18} /></div><div><p>{label}</p><strong>{value}</strong></div></div>;
+}
 
 function AdminAnalytics() {
   const [analytics, setAnalytics] = useState(null);

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, MapPin, Menu, X, Plus, User, Heart, LogOut, LayoutDashboard, ShieldCheck, LoaderCircle, XCircle, MessageCircle, Clock3 } from 'lucide-react';
+import { Search, MapPin, Menu, X, Plus, User, Heart, LayoutDashboard, ShieldCheck, LoaderCircle, XCircle, Clock3 } from 'lucide-react';
 import { NIGERIAN_STATES } from '../utils/constants.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getSearchSuggestions } from '../services/listingService.js';
 import { formatNaira } from '../utils/format.js';
+import UserAvatar from './UserAvatar.jsx';
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -17,7 +18,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user, isAuthenticated, logout, unreadMessageCount, favoriteCount } = useAuth();
+  const { user, isAuthenticated, favoriteCount } = useAuth();
 
   useEffect(() => {
     setQ(searchParams.get('q') || '');
@@ -77,18 +78,11 @@ export default function Navbar() {
     setSuggestionsError('');
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-    setOpen(false);
-  };
-
   return (
     <header className="nav">
       <div className="container nav-row">
         <Link to="/" className="logo" aria-label="Jimvolt home">
-          <span className="logo-mark"><svg viewBox="0 0 32 32" width="22" height="22"><path d="M18 4 8 18h7l-2 10 11-15h-7z" fill="#fff" /></svg></span>
-          Jimvolt
+          <img className="brand-logo navbar-logo" src="/jimvolt-logo.png" alt="Jimvolt" />
         </Link>
 
         <form className="search search-with-suggestions" onSubmit={submit} role="search">
@@ -136,10 +130,8 @@ export default function Navbar() {
           {isAuthenticated ? (
             <>
               <NavLink to="/dashboard" onClick={() => setOpen(false)}><LayoutDashboard size={16} /> Dashboard</NavLink>
-              <NavLink to="/messages" onClick={() => setOpen(false)}><MessageCircle size={16} /> Messages{unreadMessageCount > 0 && <span className="nav-message-count">{unreadMessageCount > 99 ? '99+' : unreadMessageCount}</span>}</NavLink>
               {['admin', 'super_admin'].includes(user?.role) && <NavLink to="/admin" onClick={() => setOpen(false)}><ShieldCheck size={16} /> Admin</NavLink>}
-              <NavLink to="/profile" onClick={() => setOpen(false)}><User size={16} /> {user?.full_name?.split(' ')[0] || 'Profile'}</NavLink>
-              <button type="button" className="nav-logout" onClick={handleLogout}><LogOut size={16} /> Logout</button>
+              <NavLink to="/profile" onClick={() => setOpen(false)}><UserAvatar src={user?.profile_image} name={user?.full_name} className="nav-user-avatar" /> {user?.full_name?.split(' ')[0] || 'Profile'}</NavLink>
             </>
           ) : (
             <NavLink to="/login" onClick={() => setOpen(false)}><User size={16} /> Sign in</NavLink>

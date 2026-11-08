@@ -1,7 +1,7 @@
 import api from './api.js';
 
 export const getSellerDashboard = () => api.get('/seller/dashboard');
-export const getSellerAds = (params = {}) => api.get('/seller/ads', { params });
+export const getSellerAds = (params = {}, config = {}) => api.get('/seller/ads', { ...config, params });
 export const updateSellerAdStatus = (id, status) => api.patch(`/seller/ads/${id}/status`, { status });
 export const duplicateSellerAd = (id) => api.post(`/seller/ads/${id}/duplicate`);
 export const getSellerAnalytics = (params = {}) => api.get('/seller/analytics', { params });
