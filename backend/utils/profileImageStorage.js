@@ -2,6 +2,7 @@ const fs = require('node:fs/promises')
 const path = require('node:path')
 const { createHash, randomUUID } = require('node:crypto')
 const { detectImageType } = require('./detectImageType')
+const { rejectedUploadError } = require('./cloudinaryErrors')
 
 const storageDirectory = path.join(__dirname, '..', 'uploads', 'profiles')
 const maxFileSize = 5 * 1024 * 1024
@@ -29,7 +30,7 @@ function getCloudinaryConfig() {
   const { CLOUDINARY_CLOUD_NAME: cloudName, CLOUDINARY_API_KEY: apiKey, CLOUDINARY_API_SECRET: apiSecret } = process.env
   if (!cloudName && !apiKey && !apiSecret) return null
   if (!cloudName || !apiKey || !apiSecret || !/^[a-z0-9-]+$/i.test(cloudName)) {
-    const error = new Error('Profile image storage is not configured correctly.')
+    const error = new Error('Image uploads are not set up on this server yet: Cloudinary storage is incomplete. Please contact support.')
     error.statusCode = 503
     throw error
   }
@@ -81,11 +82,7 @@ async function storeCloudinaryProfileImage(file, userId, actualType, extension, 
     `https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`,
     { method: 'POST', body: formData, signal: AbortSignal.timeout(30000) },
   )
-  if (!response.ok) {
-    const error = new Error('Image upload service could not accept the selected image.')
-    error.statusCode = 502
-    throw error
-  }
+  if (!response.ok) throw await rejectedUploadError(response)
 
   let result
   try {
