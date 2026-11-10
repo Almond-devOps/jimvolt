@@ -9,7 +9,7 @@
       }
     },
     {
-      "src": "backend/vercel.js",
+      "src": "backend/api/index.js",
       "use": "@vercel/node",
       "config": {
         "includeFiles": [
@@ -22,35 +22,35 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "backend/vercel.js"
+      "dest": "backend/api/index.js"
     },
     {
       "src": "/uploads/(.*)",
-      "dest": "backend/vercel.js"
+      "dest": "backend/api/index.js"
     },
     {
       "src": "/ads/(.*)",
-      "dest": "backend/vercel.js"
+      "dest": "backend/api/index.js"
     },
     {
       "src": "/sellers/(.*)",
-      "dest": "backend/vercel.js"
+      "dest": "backend/api/index.js"
     },
     {
       "src": "/seller/(.*)",
-      "dest": "backend/vercel.js"
+      "dest": "backend/api/index.js"
     },
     {
       "src": "/category/(.*)",
-      "dest": "backend/vercel.js"
+      "dest": "backend/api/index.js"
     },
     {
       "src": "/robots.txt",
-      "dest": "backend/vercel.js"
+      "dest": "backend/api/index.js"
     },
     {
       "src": "/sitemap(.*)\\.xml",
-      "dest": "backend/vercel.js"
+      "dest": "backend/api/index.js"
     },
     {
       "handle": "filesystem"
