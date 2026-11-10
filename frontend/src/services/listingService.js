@@ -48,11 +48,11 @@ export async function getSeller(id) {
 }
 
 export async function createAd(payload, onUploadProgress) {
-  return api.post('/ads', payload, { onUploadProgress });
+  return api.post('/ads', payload, { onUploadProgress, timeout: 120000 });
 }
 
 export async function updateAd(id, payload, onUploadProgress) {
-  return api.put(`/ads/${id}`, payload, { onUploadProgress });
+  return api.put(`/ads/${id}`, payload, { onUploadProgress, timeout: 120000 });
 }
 
 export async function deleteAd(id) {
