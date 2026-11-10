@@ -128,7 +128,7 @@ export default function AdsPage() {
         <div>
           <p className="eyebrow">{searchTerm ? 'Search results' : 'Renewable energy marketplace'}</p>
           <h1>{searchTerm ? `Results for “${searchTerm}”` : 'Browse products and services'}</h1>
-          <p className="muted">{loading ? 'Searching approved advertisements...' : `${pagination.total.toLocaleString()} matching ${pagination.total === 1 ? 'advertisement' : 'advertisements'}`}</p>
+          <p className="muted">{loading ? <span className="shimmer shimmer-line" style={{ width: 220 }} role="status" aria-label="Searching approved advertisements" /> : `${pagination.total.toLocaleString()} matching ${pagination.total === 1 ? 'advertisement' : 'advertisements'}`}</p>
         </div>
         <div className="search-results-actions">
           <button type="button" className="btn btn-white mobile-filter-button" aria-expanded={mobileFiltersOpen} aria-controls="advertisement-filters" onClick={() => setMobileFiltersOpen(true)}><Filter size={17} /> Filters{selectedFilterCount > 0 && <span className="filter-count">{selectedFilterCount}</span>}</button>

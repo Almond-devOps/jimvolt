@@ -97,7 +97,7 @@ export default function AdDetailPage() {
     }
   };
 
-  if (loading) return <div className="container section"><div className="empty">Loading advertisement...</div></div>;
+  if (loading) return <div className="container section"><div className="shimmer" style={{ height: 420 }} role="status" aria-label="Loading advertisement" /></div>;
   if (!advertisement) return <div className="container section"><div className="alert" role="alert">{notice?.text || 'Advertisement not found.'}</div><Link className="link" to="/ads">Browse advertisements</Link></div>;
 
   const images = advertisement.images || (advertisement.image ? [advertisement.image] : []);

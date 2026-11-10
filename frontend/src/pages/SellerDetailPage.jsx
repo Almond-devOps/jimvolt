@@ -21,7 +21,7 @@ export default function SellerDetailPage() {
     return () => { active = false; };
   }, [id]);
 
-  if (loading) return <div className="container section"><div className="empty">Loading seller...</div></div>;
+  if (loading) return <div className="container section"><div className="shimmer" style={{ height: 260 }} role="status" aria-label="Loading seller" /></div>;
   if (error || !data) return <div className="container section"><div className="alert" role="alert">{error || 'Seller not found.'}</div><Link className="link" to="/sellers">Browse verified sellers</Link></div>;
 
   return (
