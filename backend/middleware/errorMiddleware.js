@@ -30,7 +30,7 @@ function errorHandler(error, req, res, next) {
         ? 'An account or record with those details already exists.'
         : databaseUnavailable
           ? 'Database connection failed. Please try again later.'
-        : statusCode >= 500
+        : statusCode >= 500 && !(error.statusCode && [502, 503].includes(statusCode))
           ? 'Server error. Please try again later.'
           : error.message,
   })
