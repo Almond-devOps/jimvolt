@@ -85,11 +85,11 @@ test('rejects product images whose actual signature does not match the declared 
 
     await assert.rejects(
       storeProductImages([{ buffer: png, mimetype: 'image/jpeg' }], 17),
-      { statusCode: 400, message: 'An image file has an invalid or unsupported file signature.' },
+      { statusCode: 400, message: 'This file is not a valid JPG, PNG, WebP or HEIC image, or its file type does not match its contents.' },
     )
     await assert.rejects(
       storeProductImages([{ buffer: Buffer.from('not an image'), mimetype: 'image/png' }], 17),
-      { statusCode: 400, message: 'An image file has an invalid or unsupported file signature.' },
+      { statusCode: 400, message: 'This file is not a valid JPG, PNG, WebP or HEIC image, or its file type does not match its contents.' },
     )
     assert.equal(uploadAttempted, false)
   })
@@ -211,7 +211,7 @@ test('returns a clear service-unavailable error when production Cloudinary confi
   }, async () => {
     await assert.rejects(
       storeProductImages([{ buffer: png, mimetype: 'image/png' }], 17),
-      { statusCode: 503, message: 'Product image storage is not configured correctly for production.' },
+      { statusCode: 503, message: 'Image uploads are not set up on this server yet: Cloudinary storage is missing or incomplete (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET). Please contact support.' },
     )
   })
 })
@@ -225,7 +225,7 @@ test('rejects incomplete production Cloudinary configuration instead of using lo
   }, async () => {
     await assert.rejects(
       storeProductImages([{ buffer: png, mimetype: 'image/png' }], 17),
-      { statusCode: 503, message: 'Product image storage is not configured correctly for production.' },
+      { statusCode: 503, message: 'Image uploads are not set up on this server yet: Cloudinary storage is missing or incomplete (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET). Please contact support.' },
     )
   })
 })
