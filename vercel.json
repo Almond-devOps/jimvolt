@@ -1,90 +1,63 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "backend": {
-      "root": "backend",
-      "framework": "express",
-      "entrypoint": "vercel.js",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "frontend",
-          "format": "url",
-          "env": "JIMVOLT_FRONTEND_URL"
-        }
-      ]
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     },
-    "frontend": {
-      "root": "frontend",
-      "framework": "vite",
-      "rewrites": [
-        {
-          "source": "/(.*)",
-          "destination": "/index.html"
-        }
-      ]
+    {
+      "src": "backend/vercel.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "backend/certs/**",
+          "backend/config/**"
+        ]
+      }
     }
-  },
-  "rewrites": [
+  ],
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "backend"
-      }
+      "src": "/api/(.*)",
+      "dest": "backend/vercel.js"
     },
     {
-      "source": "/uploads/(.*)",
-      "destination": {
-        "service": "backend"
-      }
+      "src": "/uploads/(.*)",
+      "dest": "backend/vercel.js"
     },
     {
-      "source": "/ads/(.*)",
-      "destination": {
-        "service": "backend"
-      }
+      "src": "/ads/(.*)",
+      "dest": "backend/vercel.js"
     },
     {
-      "source": "/sellers/(.*)",
-      "destination": {
-        "service": "backend"
-      }
+      "src": "/sellers/(.*)",
+      "dest": "backend/vercel.js"
     },
     {
-      "source": "/seller/(.*)",
-      "destination": {
-        "service": "backend"
-      }
+      "src": "/seller/(.*)",
+      "dest": "backend/vercel.js"
     },
     {
-      "source": "/category/(.*)",
-      "destination": {
-        "service": "backend"
-      }
+      "src": "/category/(.*)",
+      "dest": "backend/vercel.js"
     },
     {
-      "source": "/robots.txt",
-      "destination": {
-        "service": "backend"
-      }
+      "src": "/robots.txt",
+      "dest": "backend/vercel.js"
     },
     {
-      "source": "/sitemap.xml",
-      "destination": {
-        "service": "backend"
-      }
+      "src": "/sitemap(.*)\\.xml",
+      "dest": "backend/vercel.js"
     },
     {
-      "source": "/sitemap-:part.xml",
-      "destination": {
-        "service": "backend"
-      }
+      "handle": "filesystem"
     },
     {
-      "source": "/(.*)",
-      "destination": {
-        "service": "frontend"
-      }
+      "src": "/(.*)",
+      "dest": "/frontend/index.html"
     }
   ]
 }
