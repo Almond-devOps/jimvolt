@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Trash2, X } from 'lucide-react';
 import UserAvatar from './UserAvatar.jsx';
+import { IMAGE_ACCEPT, describeImageProblem, prepareImage } from '../utils/imageFiles.js';
 
 const maxFileSize = 5 * 1024 * 1024;
-const allowedTypes = new Map([
-  ['image/jpeg', ['.jpg', '.jpeg']],
-  ['image/png', ['.png']],
-  ['image/webp', ['.webp']],
-]);
 
 export default function ProfilePictureUpload({
   currentImage,
@@ -22,6 +18,7 @@ export default function ProfilePictureUpload({
   const inputRef = useRef(null);
   const [validationError, setValidationError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     if (!file) {
@@ -34,26 +31,27 @@ export default function ProfilePictureUpload({
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  const selectImage = (event) => {
+  const selectImage = async (event) => {
     const selected = event.target.files?.[0];
+    event.target.value = '';
     if (!selected) return;
 
-    const extension = `.${selected.name.split('.').pop()?.toLowerCase() || ''}`;
-    if (!allowedTypes.get(selected.type)?.includes(extension)) {
-      setValidationError('Choose a JPG, PNG, or WebP image.');
+    const problem = describeImageProblem(selected);
+    if (problem) {
+      setValidationError(`"${selected.name}" ${problem}`);
       onFileChange(null);
-      event.target.value = '';
       return;
     }
-    if (selected.size > maxFileSize) {
-      setValidationError('Profile pictures must be 5 MB or smaller.');
-      onFileChange(null);
-      event.target.value = '';
-      return;
-    }
-
+    setProcessing(true);
     setValidationError('');
-    onFileChange(selected);
+    const prepared = await prepareImage(selected, { maxDimension: 1200 });
+    setProcessing(false);
+    if (prepared.size > maxFileSize) {
+      setValidationError(`"${selected.name}" is ${(prepared.size / (1024 * 1024)).toFixed(1)} MB. Profile pictures must be 5 MB or smaller.`);
+      onFileChange(null);
+      return;
+    }
+    onFileChange(prepared);
   };
 
   const cancelSelection = () => {
@@ -72,9 +70,9 @@ export default function ProfilePictureUpload({
       />
       <div className="profile-picture-controls">
         <div className="profile-picture-actions">
-          <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={disabled}>
+          <button type="button" className="btn btn-primary" onClick={() => inputRef.current?.click()} disabled={disabled || processing}>
             <ImagePlus size={17} aria-hidden="true" />
-            {currentImage ? 'Change Photo' : file ? 'Choose Another Photo' : 'Upload Photo'}
+            {processing ? 'Preparing photo…' : currentImage ? 'Change Photo' : file ? 'Choose Another Photo' : 'Upload Photo'}
           </button>
           {file && <button type="button" className="btn btn-white" onClick={cancelSelection} disabled={disabled}><X size={16} aria-hidden="true" /> Cancel selection</button>}
           {currentImage && !file && <button type="button" className="btn btn-white profile-remove-photo" onClick={onRemove} disabled={disabled}><Trash2 size={16} aria-hidden="true" /> Remove Photo</button>}
@@ -83,12 +81,12 @@ export default function ProfilePictureUpload({
           ref={inputRef}
           className="profile-image-input"
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept={IMAGE_ACCEPT}
           aria-label="Choose a profile picture"
           onChange={selectImage}
           disabled={disabled}
         />
-        <p className="profile-picture-help">JPG, PNG, or WebP. Maximum file size: 5 MB.</p>
+        <p className="profile-picture-help">JPG, PNG, WebP or iPhone HEIC photos. Maximum file size: 5 MB (large photos are shrunk automatically).</p>
         {file && !uploading && <p className="profile-picture-help" aria-live="polite">{file.name} selected. Save changes to upload it.</p>}
         {validationError && <p className="profile-picture-error" role="alert">{validationError}</p>}
         {uploading && (
