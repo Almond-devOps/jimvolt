@@ -1,6 +1,7 @@
 const crypto = require('node:crypto')
 const fs = require('node:fs/promises')
 const path = require('node:path')
+const { heicMimeTypes, isHeic, convertHeicToJpeg } = require('../utils/heic')
 
 const privateDirectory = path.resolve(__dirname, '../private-verifications')
 const maximumSize = 5 * 1024 * 1024
@@ -17,6 +18,7 @@ function detectDocumentType(buffer) {
   if (buffer.subarray(0, 5).toString() === '%PDF-') return 'pdf'
   if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'png'
   if (buffer.length >= 3 && buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255) return 'jpg'
+  if (isHeic(buffer)) return 'heic'
   return null
 }
 
@@ -56,15 +58,22 @@ async function parseVerificationUpload(req, res, next) {
       const filename = disposition.match(/(?:^|;)\s*filename="([^"]*)"/i)?.[1]
       if (filename !== undefined) {
         if (!acceptedFields.has(name) || !filename) throw uploadError('Choose a supported verification document.')
-        if (data.length > maximumSize) throw uploadError('Verification documents must be 5 MB or smaller.', 413)
+        if (data.length > maximumSize) throw uploadError(`"${filename}" is larger than 5 MB. Choose a smaller file.`, 413)
         const declaredType = headers.match(/content-type:\s*([^\r\n]+)/i)?.[1]?.trim().toLowerCase()
-        const extension = detectDocumentType(data)
+        let extension = detectDocumentType(data)
+        let fileData = data
         const expectedTypes = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg' }
-        if (!extension || declaredType !== expectedTypes[extension]) {
-          throw uploadError('Only genuine PDF, PNG, or JPEG verification documents are accepted.')
+        const declaredHeic = heicMimeTypes.has(declaredType) || ['', 'application/octet-stream'].includes(declaredType || '')
+        if (!extension || (extension === 'heic' ? !declaredHeic : declaredType !== expectedTypes[extension])) {
+          throw uploadError(`"${filename}" is not an accepted document. Upload a genuine PDF, PNG, JPEG or iPhone HEIC photo.`)
+        }
+        if (extension === 'heic') {
+          fileData = await convertHeicToJpeg(data)
+          extension = 'jpg'
+          if (fileData.length > maximumSize) throw uploadError('Verification documents must be 5 MB or smaller after conversion. Choose a smaller photo.', 413)
         }
         if (parts.some((part) => part.name === name)) throw uploadError('Only one file may be uploaded in each document field.')
-        parts.push({ name, filename, data, extension })
+        parts.push({ name, filename, data: fileData, extension })
       } else if (name) {
         req.body[name] = data.toString('utf8')
       }
