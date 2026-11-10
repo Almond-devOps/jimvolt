@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "vercel.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "certs/**",
+          "config/**"
+        ]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "vercel.js"
+    }
+  ]
+}
