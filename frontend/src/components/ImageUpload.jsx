@@ -1,8 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ImagePlus, Replace, Upload, X } from 'lucide-react';
 import { resolveImageUrl } from '../utils/imageUrl.js';
-
-const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+import { IMAGE_ACCEPT, describeImageProblem, prepareImage } from '../utils/imageFiles.js';
 
 export default function ImageUpload({
   existingImages,
@@ -19,6 +18,7 @@ export default function ImageUpload({
   const fileInput = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [previews, setPreviews] = useState([]);
+  const [processing, setProcessing] = useState(false);
   const totalImages = existingImages.length + files.length;
 
   useEffect(() => {
@@ -27,28 +27,34 @@ export default function ImageUpload({
     return () => next.forEach(({ url }) => URL.revokeObjectURL(url));
   }, [files]);
 
-  const addFiles = (fileList) => {
+  const addFiles = async (fileList) => {
     const selected = Array.from(fileList || []);
     if (!selected.length) return;
     const availableSlots = maxFiles - totalImages;
-    const valid = [];
-    for (const file of selected) {
-      if (!allowedTypes.has(file.type)) {
-        onError('Choose JPG, PNG, or WebP image files only.');
-        return;
-      }
-      if (file.size > maxSizeMb * 1024 * 1024) {
-        onError(`Each image must be ${maxSizeMb} MB or smaller.`);
-        return;
-      }
-      valid.push(file);
-    }
-    if (valid.length > availableSlots) {
+    if (selected.length > availableSlots) {
       onError(`You can add up to ${maxFiles} images. Remove an image before adding more.`);
       return;
     }
+    setProcessing(true);
     onError('');
-    onFilesChange((current) => [...current, ...valid]);
+    const valid = [];
+    const problems = [];
+    for (const file of selected) {
+      const problem = describeImageProblem(file);
+      if (problem) {
+        problems.push(`"${file.name}" ${problem}`);
+        continue;
+      }
+      const prepared = await prepareImage(file);
+      if (prepared.size > maxSizeMb * 1024 * 1024) {
+        problems.push(`"${file.name}" is ${(prepared.size / (1024 * 1024)).toFixed(1)} MB. Each image must be ${maxSizeMb} MB or smaller.`);
+        continue;
+      }
+      valid.push(prepared);
+    }
+    setProcessing(false);
+    if (valid.length) onFilesChange((current) => [...current, ...valid]);
+    onError(problems.join(' '));
   };
 
   const replaceAll = () => {
@@ -60,7 +66,7 @@ export default function ImageUpload({
   return (
     <section className="image-upload-section" aria-labelledby={`${inputId}-heading`}>
       <div className="image-upload-heading">
-        <div><h2 id={`${inputId}-heading`}>Product images <span className="image-upload-optional">Optional</span></h2><p className="muted">Add up to {maxFiles} images. JPG, PNG or WebP, up to {maxSizeMb} MB each.</p></div>
+        <div><h2 id={`${inputId}-heading`}>Product images <span className="image-upload-optional">Optional</span></h2><p className="muted">Add up to {maxFiles} images. JPG, PNG, WebP or iPhone HEIC photos, up to {maxSizeMb} MB each. Large photos are shrunk automatically.</p></div>
         {totalImages > 0 && <button className="image-upload-replace" type="button" onClick={replaceAll} disabled={disabled}><Replace size={16} /> Replace all</button>}
       </div>
       <div
@@ -71,21 +77,21 @@ export default function ImageUpload({
         onDrop={(event) => {
           event.preventDefault();
           setDragging(false);
-          if (!disabled) addFiles(event.dataTransfer.files);
+          if (!disabled && !processing) addFiles(event.dataTransfer.files);
         }}
       >
         <span className="image-upload-icon"><ImagePlus size={24} /></span>
         <p><strong>Upload product images</strong></p>
         <p className="muted">Drag and drop images here or browse your device</p>
-        <button className="btn btn-white image-upload-browse" type="button" disabled={disabled || totalImages >= maxFiles} onClick={() => fileInput.current?.click()}><Upload size={16} /> Browse images</button>
+        <button className="btn btn-white image-upload-browse" type="button" disabled={disabled || processing || totalImages >= maxFiles} onClick={() => fileInput.current?.click()}><Upload size={16} /> {processing ? 'Preparing images…' : 'Browse images'}</button>
         <input
           ref={fileInput}
           id={inputId}
           className="image-upload-input"
           type="file"
-          accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+          accept={IMAGE_ACCEPT}
           multiple
-          disabled={disabled || totalImages >= maxFiles}
+          disabled={disabled || processing || totalImages >= maxFiles}
           aria-label="Select product images"
           onChange={(event) => {
             addFiles(event.target.files);
