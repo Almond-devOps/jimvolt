@@ -22,7 +22,7 @@ export default function SellersPage() {
     <div className="container section">
       <header className="section-head"><div><p className="eyebrow">Shop with confidence</p><h1>Verified sellers</h1><p className="muted">Businesses verified by Jimvolt, with active renewable energy listings.</p></div></header>
       {error && <div className="alert" role="alert">{error}</div>}
-      {loading ? <div className="empty">Loading verified sellers...</div> : !sellers.length ? <div className="empty">No verified sellers with active listings yet.</div> : (
+      {loading ? <div className="grid" role="status" aria-label="Loading verified sellers">{Array.from({ length: 6 }, (_, i) => <div key={i} className="shimmer" style={{ height: 150 }} />)}</div> : !sellers.length ? <div className="empty">No verified sellers with active listings yet.</div> : (
         <div className="sellers sellers-page-grid">{sellers.map((seller) => (
           <Link className="seller-card" key={seller.id} to={`/sellers/${seller.id}`}>
             <UserAvatar src={seller.profileImage} name={seller.name} className="avatar" />
