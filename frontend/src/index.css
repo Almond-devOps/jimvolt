@@ -34,6 +34,14 @@ ul { list-style: none; margin: 0; padding: 0; }
 .nav-row { display: flex; align-items: center; gap: 16px; min-height: 68px; }
 .logo { display: flex; align-items: center; color: var(--blue-dark); }
 .brand-logo { display: block; height: auto; object-fit: contain; }
+/* Shimmer loading states */
+.shimmer { background: linear-gradient(90deg, #EAF0F8 25%, #F5F8FC 50%, #EAF0F8 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 10px; }
+.shimmer-line { display: block; height: 14px; border-radius: 7px; }
+.loading-card:not(:has(*)), .admin-chart-loading { font-size: 0; color: transparent; background: linear-gradient(90deg, #EAF0F8 25%, #F5F8FC 50%, #EAF0F8 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 12px; }
+.admin-loading { font-size: 0; }
+.admin-loading::after { content: ''; flex: 1; height: 44px; border-radius: 12px; background: linear-gradient(90deg, #EAF0F8 25%, #F5F8FC 50%, #EAF0F8 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
+@media (prefers-reduced-motion: reduce) { .shimmer, .skeleton, .loading-card, .admin-chart-loading, .admin-loading::after, .conversation-loading span { animation: none; } }
+
 .navbar-logo { width: 110px; }
 .search { flex: 1; display: flex; align-items: center; max-width: 640px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); overflow: hidden; }
 .search:focus-within { border-color: var(--blue); background: #fff; }
@@ -1300,3 +1308,10 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
   .promotion-package-options { grid-template-columns: minmax(0, 1fr); }
   .admin-promotion-form-row { grid-template-columns: minmax(0, 1fr); }
 }
+/* Shimmer loading states */
+.shimmer { background: linear-gradient(90deg, #EAF0F8 25%, #F5F8FC 50%, #EAF0F8 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 10px; }
+.shimmer-line { display: block; height: 14px; border-radius: 7px; }
+.loading-card:not(:has(*)), .admin-chart-loading { font-size: 0; color: transparent; background: linear-gradient(90deg, #EAF0F8 25%, #F5F8FC 50%, #EAF0F8 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 12px; }
+.admin-loading { font-size: 0; }
+.admin-loading::after { content: ''; flex: 1; height: 44px; border-radius: 12px; background: linear-gradient(90deg, #EAF0F8 25%, #F5F8FC 50%, #EAF0F8 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
+@media (prefers-reduced-motion: reduce) { .shimmer, .skeleton, .loading-card, .admin-chart-loading, .admin-loading::after, .conversation-loading span { animation: none; } }
