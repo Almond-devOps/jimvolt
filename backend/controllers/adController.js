@@ -122,7 +122,7 @@ function validateImages(images) {
 }
 
 async function save(req, res, isUpdate) {
-  const uploadedImages = await storeProductImages(req.files)
+  const uploadedImages = await storeProductImages(req.files, req.user.id)
   try {
     validationError(req)
     const category = await categoryModel.findByIdOrSlug(String(req.body.categoryId))
@@ -166,7 +166,7 @@ async function save(req, res, isUpdate) {
     const id = await adModel.create({ ...fields, userId: req.user.id })
     return res.status(201).json({ message: 'Advertisement submitted for review.', id })
   } catch (error) {
-    await removeProductImages(uploadedImages.map((image) => image.path)).catch((cleanupError) => {
+    await removeProductImages(uploadedImages, req.user.id).catch((cleanupError) => {
       console.error('Could not clean up product images after an unsuccessful advertisement save:', cleanupError)
     })
     throw error

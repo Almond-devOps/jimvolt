@@ -1,18 +1,38 @@
 const fs = require('node:fs/promises')
+const fsSync = require('node:fs')
 const path = require('node:path')
 const mysql = require('mysql2/promise')
-require('dotenv').config()
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') })
 
 const requiredVariables = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME']
 const missingVariables = requiredVariables.filter((name) => process.env[name] === undefined)
 if (missingVariables.length) {
   throw new Error(`Missing database configuration: ${missingVariables.join(', ')}`)
 }
-if (process.env.DB_NAME !== 'jimvolt_db') {
-  throw new Error('DB_NAME must be set to jimvolt_db.')
+if (!process.env.DB_NAME) {
+  throw new Error('DB_NAME must be configured.')
 }
 if (process.env.DB_USER.toLowerCase() === 'root') {
   throw new Error('Configure DB_USER with the dedicated Jimvolt MySQL application account, not root.')
+}
+
+const isLocalDatabase = ['localhost', '127.0.0.1', '::1'].includes(process.env.DB_HOST.toLowerCase())
+const sslCaSetting = process.env.DB_SSL_CA?.trim()
+if (!isLocalDatabase && !sslCaSetting) {
+  throw new Error('DB_SSL_CA must point to the Aiven CA certificate when using a remote MySQL database.')
+}
+
+let ssl
+if (sslCaSetting) {
+  const sslCaPath = path.resolve(__dirname, '..', sslCaSetting)
+  try {
+    ssl = {
+      ca: fsSync.readFileSync(sslCaPath, 'utf8'),
+      rejectUnauthorized: true,
+    }
+  } catch (error) {
+    throw new Error(`Could not read the configured DB_SSL_CA certificate at ${sslCaPath}: ${error.message}`)
+  }
 }
 
 const pool = mysql.createPool({
@@ -21,22 +41,26 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: Number(process.env.DB_PORT || 3306),
+  connectTimeout: 10000,
   waitForConnections: true,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
   connectionLimit: 10,
-  queueLimit: 0,
+  queueLimit: 50,
   charset: 'utf8mb4',
+  ...(ssl ? { ssl } : {}),
 })
 
 async function connectDB() {
   const connection = await pool.getConnection()
   try {
     const [rows] = await connection.query(
-      'SELECT DATABASE() AS database_name, CURRENT_USER() AS authenticated_user',
+      'SELECT DATABASE() AS database_name',
     )
-    if (rows[0].database_name !== 'jimvolt_db') {
+    if (rows[0].database_name !== process.env.DB_NAME) {
       throw new Error('Connected to an unexpected MySQL database.')
     }
-    console.log(`MySQL connected: ${rows[0].database_name} (${rows[0].authenticated_user.split('@')[0]})`)
+    console.log(`MySQL connected: ${rows[0].database_name}`)
   } finally {
     connection.release()
   }

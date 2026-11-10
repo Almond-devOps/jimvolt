@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Mail, Phone, CalendarDays, ShieldCheck, PencilLine, KeyRound, Settings } from 'lucide-react';
+import { Camera, Mail, Phone, CalendarDays, ShieldCheck, PencilLine, KeyRound, Settings, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getUserProfile, removeUserProfileImage, updateUserProfile } from '../services/userService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import LogoutAction from '../components/LogoutAction.jsx';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
 import ProfilePictureUpload from '../components/ProfilePictureUpload.jsx';
+import ShareProfileDialog from '../components/ShareProfileDialog.jsx';
 import UserAvatar from '../components/UserAvatar.jsx';
 
 export default function ProfilePage() {
@@ -18,8 +19,15 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [removingImage, setRemovingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [sharingProfile, setSharingProfile] = useState(false);
   const { refreshUser } = useAuth();
   const mountedRef = useRef(false);
+  const shareButtonRef = useRef(null);
+
+  const closeShareDialog = () => {
+    setSharingProfile(false);
+    window.requestAnimationFrame(() => shareButtonRef.current?.focus());
+  };
 
   const loadProfile = async () => {
     setLoading(true);
@@ -126,6 +134,17 @@ export default function ProfilePage() {
             <h1>{profile.full_name} <VerifiedBusinessBadge verified={Boolean(profile.is_verified)} /></h1>
             <p className="muted">{profile.is_verified ? 'Verified seller' : 'Awaiting verification'}</p>
           </div>
+          <button
+            ref={shareButtonRef}
+            type="button"
+            className="btn btn-primary profile-share-button"
+            aria-haspopup="dialog"
+            aria-expanded={sharingProfile}
+            onClick={() => setSharingProfile(true)}
+          >
+            <Share2 size={18} aria-hidden="true" />
+            Share Profile
+          </button>
         </div>
 
         <div className="profile-meta-grid">
@@ -187,6 +206,7 @@ export default function ProfilePage() {
           </form>
         )}
       </div>
+      {sharingProfile && <ShareProfileDialog profile={profile} onClose={closeShareDialog} />}
     </div>
   );
 }

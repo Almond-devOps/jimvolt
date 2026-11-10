@@ -1,9 +1,9 @@
-require('dotenv').config()
-
 const cors = require('cors')
 const express = require('express')
 const http = require('node:http')
 const path = require('node:path')
+require('dotenv').config({ path: path.resolve(__dirname, '.env') })
+
 const { pool, connectDB, ensureCoreSchema } = require('./config/database')
 const adRoutes = require('./routes/adRoutes')
 const adminRoutes = require('./routes/adminRoutes')
@@ -48,16 +48,8 @@ app.use(express.static(path.resolve(__dirname, '../frontend/dist'), { index: fal
 app.get('/', (req, res) => res.json({ message: 'Jimvolt API is running successfully.' }))
 app.get('/api/health', async (req, res, next) => {
   try {
-    const [rows] = await pool.query('SELECT DATABASE() AS database_name')
-    return res.json({ status: 'ok', database: rows[0].database_name })
-  } catch (error) {
-    return next(error)
-  }
-})
-app.get('/api/test-db', async (req, res, next) => {
-  try {
-    const [rows] = await pool.query('SELECT DATABASE() AS database_name')
-    return res.json({ success: true, database: rows[0].database_name })
+    await pool.query('SELECT 1')
+    return res.json({ status: 'ok' })
   } catch (error) {
     return next(error)
   }
@@ -122,6 +114,11 @@ async function startServer({ port = Number(process.env.PORT || 5000), host } = {
   })
 }
 
+async function shutdownServer(server, closePool = () => pool.end()) {
+  await new Promise((resolve) => server.io.close(resolve))
+  await closePool()
+}
+
 if (require.main === module) {
   startServer()
     .then((server) => {
@@ -129,10 +126,13 @@ if (require.main === module) {
       const shutdown = () => {
         if (shuttingDown) return
         shuttingDown = true
-        io.close(async () => {
-          await pool.end()
-          process.exit(0)
-        })
+        shutdownServer(server).then(
+          () => process.exit(0),
+          (error) => {
+            console.error('Graceful shutdown failed:', error.message)
+            process.exit(1)
+          },
+        )
       }
       process.once('SIGINT', shutdown)
       process.once('SIGTERM', shutdown)
@@ -144,4 +144,4 @@ if (require.main === module) {
     })
 }
 
-module.exports = { app, initializeBackend, startServer }
+module.exports = { app, initializeBackend, shutdownServer, startServer }
