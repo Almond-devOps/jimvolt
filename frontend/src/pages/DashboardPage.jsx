@@ -19,6 +19,7 @@ import {
 import { NIGERIAN_STATES } from '../utils/constants.js';
 import { formatNaira } from '../utils/format.js';
 import { resolveImageUrl } from '../utils/imageUrl.js';
+import { DOCUMENT_ACCEPT, prepareDocument } from '../utils/imageFiles.js';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
 import UserAvatar from '../components/UserAvatar.jsx';
 import {
@@ -808,10 +809,23 @@ function Verification({ setToast }) {
     return () => { active = false; };
   }, []);
   const update = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  const pickDocument = async (event, key) => {
+    const input = event.target;
+    const selected = input.files?.[0] || null;
+    const { file, error: problem } = await prepareDocument(selected);
+    if (problem) {
+      input.value = '';
+      setError(problem);
+      setDocuments((current) => ({ ...current, [key]: null }));
+      return;
+    }
+    setError('');
+    setDocuments((current) => ({ ...current, [key]: file }));
+  };
   const submit = async (event) => {
     event.preventDefault();
     if (!documents.identityDocument && !verification?.has_identity_document && !documents.cacDocument && !documents.additionalDocument) {
-      setError('Attach at least one PDF, PNG, or JPEG verification document.');
+      setError('Attach at least one PDF, PNG, JPEG or iPhone HEIC verification document.');
       return;
     }
     const payload = new FormData();
@@ -869,9 +883,9 @@ function Verification({ setToast }) {
         <label className="field"><span>CAC registration number</span><input name="registrationNumber" maxLength="100" value={form.registrationNumber} onChange={update} /></label>
         <label className="field"><span>Business website</span><input name="website" type="url" maxLength="2048" placeholder="https://" value={form.website} onChange={update} /></label>
         <label className="field business-description-field"><span>Business description</span><textarea name="businessDescription" rows="3" maxLength="5000" value={form.businessDescription} onChange={update} /></label>
-        <label className="field verification-file-field"><span>CAC certificate <small>PDF, PNG or JPEG · maximum 5 MB</small></span><input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={(event) => setDocuments((current) => ({ ...current, cacDocument: event.target.files?.[0] || null }))} /></label>
-        <label className="field verification-file-field"><span>Business identity / supporting document {verification?.has_identity_document ? '' : '*'} <small>PDF, PNG or JPEG · maximum 5 MB</small></span><input type="file" required={!verification?.has_identity_document} accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={(event) => setDocuments((current) => ({ ...current, identityDocument: event.target.files?.[0] || null }))} /></label>
-        <label className="field verification-file-field"><span>Additional supporting document <small>PDF, PNG or JPEG · maximum 5 MB</small></span><input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={(event) => setDocuments((current) => ({ ...current, additionalDocument: event.target.files?.[0] || null }))} /></label>
+        <label className="field verification-file-field"><span>CAC certificate <small>PDF, PNG, JPEG or iPhone HEIC · maximum 5 MB</small></span><input type="file" accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'cacDocument')} /></label>
+        <label className="field verification-file-field"><span>Business identity / supporting document {verification?.has_identity_document ? '' : '*'} <small>PDF, PNG, JPEG or iPhone HEIC · maximum 5 MB</small></span><input type="file" required={!verification?.has_identity_document} accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'identityDocument')} /></label>
+        <label className="field verification-file-field"><span>Additional supporting document <small>PDF, PNG, JPEG or iPhone HEIC · maximum 5 MB</small></span><input type="file" accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'additionalDocument')} /></label>
         <div className="business-profile-submit"><button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Submitting...' : 'Submit for review'}</button></div>
       </form>
     </section>}
