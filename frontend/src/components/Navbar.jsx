@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, MapPin, Menu, X, Plus, User, Heart, LayoutDashboard, ShieldCheck, LoaderCircle, XCircle, Clock3 } from 'lucide-react';
+import { Search, MapPin, Menu, X, Plus, User, Heart, LayoutDashboard, ShieldCheck, XCircle, Clock3 } from 'lucide-react';
 import { NIGERIAN_STATES } from '../utils/constants.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getSearchSuggestions } from '../services/listingService.js';
@@ -110,7 +110,7 @@ export default function Navbar() {
           {q && <button type="button" className="search-clear" onClick={clearSearch} aria-label="Clear search"><XCircle size={18} /></button>}
           <button className="search-btn" aria-label="Search"><Search size={18} /></button>
           {focused && q.trim().length >= 2 && <div className="search-suggestions" id="global-search-suggestions" role="listbox">
-            {suggestionsLoading && <div className="suggestion-message"><LoaderCircle size={16} className="spin" /> Searching products...</div>}
+            {suggestionsLoading && <div className="suggestion-message" role="status" aria-label="Searching products" style={{ display: 'grid', gap: 8 }}><span className="shimmer shimmer-line" style={{ width: '70%' }} /><span className="shimmer shimmer-line" style={{ width: '50%' }} /></div>}
             {!suggestionsLoading && suggestionsError && <div className="suggestion-message">{suggestionsError}</div>}
             {!suggestionsLoading && !suggestionsError && suggestions.length === 0 && <div className="suggestion-message">No matching products found. Search all listings?</div>}
             {!suggestionsLoading && suggestions.map((item) => <button type="button" role="option" key={item.id} className="search-suggestion" onMouseDown={(event) => event.preventDefault()} onClick={() => openSuggestion(item.id)}>
