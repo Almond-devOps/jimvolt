@@ -6,11 +6,9 @@ export const updateSellerAdStatus = (id, status) => api.patch(`/seller/ads/${id}
 export const duplicateSellerAd = (id) => api.post(`/seller/ads/${id}/duplicate`);
 export const getSellerAnalytics = (params = {}) => api.get('/seller/analytics', { params });
 export const getAdvertisementAnalytics = (id, params = {}) => api.get(`/seller/analytics/${id}`, { params });
-export const getBusinessProfile = () => api.get('/seller/profile');
-export const saveBusinessProfile = (payload) => api.put('/seller/profile', payload);
 export const getSellerVerification = () => api.get('/seller/verification');
 export const submitSellerVerification = (formData) => api.post('/seller/verification', formData);
 export const updateSellerVerification = (formData) => api.put('/seller/verification', formData);
 export const getSellerNotifications = () => api.get('/seller/notifications');
 export const markSellerNotificationRead = (id) => api.put(`/seller/notifications/${id}/read`);
-export const getPublicBusinessProfile = (slug) => api.get(`/seller/public/${encodeURIComponent(slug)}`);
+export const getSellerStorefront = (slug) => api.get(`/seller/public/${encodeURIComponent(slug)}`);

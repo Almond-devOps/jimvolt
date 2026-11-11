@@ -3,32 +3,32 @@ import { Globe2, MapPin, Phone, Store } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import EmptyState from '../components/EmptyState.jsx';
 import ProductCard from '../components/ProductCard.jsx';
-import { getPublicBusinessProfile } from '../services/sellerService.js';
+import { getSellerStorefront } from '../services/sellerService.js';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
 
-export default function BusinessSellerPage() {
+export default function SellerStorefrontPage() {
   const { slug } = useParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    getPublicBusinessProfile(slug)
+    getSellerStorefront(slug)
       .then(({ data: result }) => active && setData(result))
-      .catch((requestError) => active && setError(requestError.response?.data?.message || 'Could not load this business profile.'))
+      .catch((requestError) => active && setError(requestError.response?.data?.message || 'Could not load this seller storefront.'))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [slug]);
 
-  if (loading) return <div className="container section"><div className="panel loading-card">Loading business profile...</div></div>;
-  if (error || !data) return <div className="container section"><div className="notice error" role="alert">{error || 'Business profile not found.'}</div><Link className="link" to="/sellers">Browse sellers</Link></div>;
+  if (loading) return <div className="container section"><div className="panel loading-card">Loading seller storefront...</div></div>;
+  if (error || !data) return <div className="container section"><div className="notice error" role="alert">{error || 'Seller storefront not found.'}</div><Link className="link" to="/sellers">Browse sellers</Link></div>;
 
   const { seller, advertisements } = data;
   return <div className="container section public-business-page">
     <header className="panel public-business-header">
       {seller.logo_url ? <img className="public-business-logo" src={seller.logo_url} alt={`${seller.business_name} logo`} /> : <span className="public-business-logo business-logo-fallback"><Store size={32} /></span>}
       <div className="public-business-heading">
-        <p className="eyebrow">Jimvolt business profile</p>
+        <p className="eyebrow">Jimvolt seller storefront</p>
         <h1>{seller.business_name} <VerifiedBusinessBadge verified={Boolean(seller.is_verified)} /></h1>
         <p className="muted">{seller.is_verified ? 'Verified seller' : 'Marketplace seller'}{seller.category_name ? ` · ${seller.category_name}` : ''}</p>
         {(seller.city || seller.state) && <p className="business-location"><MapPin size={16} /> {[seller.city, seller.state].filter(Boolean).join(', ')}</p>}

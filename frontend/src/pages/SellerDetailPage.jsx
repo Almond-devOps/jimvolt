@@ -30,7 +30,7 @@ export default function SellerDetailPage() {
         <UserAvatar src={data.seller.profileImage} name={data.seller.name} className="avatar" />
         <div><p className="eyebrow">Jimvolt seller</p><h1>{data.seller.name} <VerifiedBusinessBadge verified={Boolean(data.seller.isVerified)} /></h1><p className="muted">{data.seller.isVerified ? 'Verified seller' : 'Seller'} · Member since {new Date(data.seller.createdAt).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })}</p></div>
       </header>
-      {data.seller.businessProfile?.slug && <p><Link className="btn btn-white" to={`/seller/${data.seller.businessProfile.slug}`}>View business profile</Link></p>}
+      {data.seller.businessProfile?.slug && <p><Link className="btn btn-white" to={`/seller/${data.seller.businessProfile.slug}`}>View seller storefront</Link></p>}
       <div className="section-head"><div><h2>Active advertisements</h2><p className="muted">{data.advertisements.length} active listings</p></div></div>
       {data.advertisements.length ? <div className="grid">{data.advertisements.map((ad) => <ProductCard key={ad.id} ad={ad} />)}</div> : <EmptyState title="No active advertisements" text="This seller does not have any approved listings right now." />}
     </div>
