@@ -70,15 +70,15 @@ async function createOrGetConversation({ buyerId, sellerId, advertisementId }) {
 
 async function listConversations(userId, search = '') {
   const searchClause = search
-    ? `AND (other.full_name LIKE ? OR COALESCE(sp.business_name, '') LIKE ?
+    ? `AND (other.full_name LIKE ?
             OR a.title LIKE ? OR last_message.message_content LIKE ?)`
     : ''
-  const searchValues = search ? Array(4).fill(`%${search}%`) : []
+  const searchValues = search ? Array(3).fill(`%${search}%`) : []
   const [rows] = await pool.execute(
     `SELECT c.id, c.buyer_id, c.seller_id, c.advertisement_id, c.updated_at,
             other.id AS other_user_id, other.full_name AS other_user_name,
             other.profile_image AS other_user_image, other.is_verified AS other_user_verified,
-            sp.business_name AS other_business_name, a.title AS advertisement_title,
+            a.title AS advertisement_title,
             a.price AS advertisement_price, a.slug AS advertisement_slug,
             (SELECT pi.image_url FROM product_images pi
              WHERE pi.advertisement_id = a.id ORDER BY pi.id LIMIT 1) AS advertisement_image,
@@ -93,7 +93,6 @@ async function listConversations(userId, search = '') {
      FROM conversations c
      JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_id = ?
      JOIN users other ON other.id = IF(c.buyer_id = ?, c.seller_id, c.buyer_id)
-     LEFT JOIN seller_profiles sp ON sp.user_id = other.id
      LEFT JOIN advertisements a ON a.id = c.advertisement_id
      LEFT JOIN messages last_message ON last_message.id = (
        SELECT m.id FROM messages m WHERE m.conversation_id = c.id
@@ -116,7 +115,7 @@ async function listConversations(userId, search = '') {
     } : null,
     other_user: {
       id: row.other_user_id,
-      name: row.other_business_name || row.other_user_name,
+      name: row.other_user_name,
       profile_image: row.other_user_image,
       is_verified: Boolean(row.other_user_verified),
     },
@@ -135,14 +134,13 @@ async function getConversation(conversationId, userId) {
     `SELECT c.id, c.buyer_id, c.seller_id, c.advertisement_id,
             other.id AS other_user_id, other.full_name AS other_user_name,
             other.profile_image AS other_user_image, other.is_verified AS other_user_verified,
-            sp.business_name AS other_business_name, a.title AS advertisement_title,
+            a.title AS advertisement_title,
             a.price AS advertisement_price, a.slug AS advertisement_slug,
             (SELECT pi.image_url FROM product_images pi
              WHERE pi.advertisement_id = a.id ORDER BY pi.id LIMIT 1) AS advertisement_image
      FROM conversations c
      JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_id = ?
      JOIN users other ON other.id = IF(c.buyer_id = ?, c.seller_id, c.buyer_id)
-     LEFT JOIN seller_profiles sp ON sp.user_id = other.id
      LEFT JOIN advertisements a ON a.id = c.advertisement_id
      WHERE c.id = ? LIMIT 1`,
     [userId, userId, conversationId],
@@ -155,7 +153,7 @@ async function getConversation(conversationId, userId) {
     seller_id: row.seller_id,
     other_user: {
       id: row.other_user_id,
-      name: row.other_business_name || row.other_user_name,
+      name: row.other_user_name,
       profile_image: row.other_user_image,
       is_verified: Boolean(row.other_user_verified),
     },

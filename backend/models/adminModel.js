@@ -27,10 +27,7 @@ async function getDashboard() {
      FROM users`,
   )
   const [sellerRows] = await pool.query(
-    `SELECT COUNT(DISTINCT user_id) AS sellers FROM (
-       SELECT user_id FROM advertisements
-       UNION SELECT user_id FROM seller_profiles
-     ) seller_accounts`,
+    `SELECT COUNT(DISTINCT user_id) AS sellers FROM advertisements`,
   )
   const [adRows] = await pool.query(
     `SELECT COUNT(*) AS total_ads,
@@ -502,23 +499,21 @@ async function setUserRole({ id, role, administratorId, administratorRole, reqMe
 }
 
 async function listSellers({ q, page, limit }) {
-  const search = q ? `AND (COALESCE(sp.business_name, u.full_name) LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)` : ''
+  const search = q ? `AND (u.full_name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)` : ''
   const searchValues = q ? Array(3).fill(`%${q}%`) : []
   const [rows] = await pool.execute(
     `SELECT u.id AS user_id, u.full_name, u.email, u.phone, u.account_status, u.is_verified,
-            sp.business_name, sp.slug, sp.logo_url, sp.address, sp.city, sp.state, sp.whatsapp,
             COUNT(DISTINCT a.id) AS advertisements
      FROM users u
-     LEFT JOIN seller_profiles sp ON sp.user_id = u.id
      LEFT JOIN advertisements a ON a.user_id = u.id
-     WHERE (sp.id IS NOT NULL OR a.id IS NOT NULL) ${search}
+     WHERE a.id IS NOT NULL ${search}
      GROUP BY u.id ORDER BY u.created_at DESC LIMIT ? OFFSET ?`,
     [...searchValues, limit, (page - 1) * limit],
   )
   const [count] = await pool.execute(
-    `SELECT COUNT(*) AS total FROM users u LEFT JOIN seller_profiles sp ON sp.user_id = u.id
-     LEFT JOIN advertisements a ON a.user_id = u.id
-     WHERE (sp.id IS NOT NULL OR a.id IS NOT NULL) ${search}`,
+    `SELECT COUNT(DISTINCT u.id) AS total FROM users u
+     JOIN advertisements a ON a.user_id = u.id
+     WHERE 1=1 ${search}`,
     searchValues,
   )
   return { sellers: rows, total: Number(count[0].total) }
