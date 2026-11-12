@@ -55,6 +55,6 @@ test('presents the public seller storefront without referring to a business prof
 
   assert.match(storefront, /Seller storefront/);
   assert.doesNotMatch(storefront, /business profile/i);
-  assert.match(seller, /View seller storefront/);
+  assert.doesNotMatch(seller, /businessProfile|View seller storefront/);
   assert.doesNotMatch(seller, /business profile/i);
 });
