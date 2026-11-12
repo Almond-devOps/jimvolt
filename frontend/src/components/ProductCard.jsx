@@ -91,9 +91,9 @@ export default function ProductCard({ ad, initiallySaved = false, onUnsave }) {
       <div className="card-body">
         <p className="card-price">{formatNaira(ad.price)}</p>
         <h3 className="card-title"><Link to={`/ads/${ad.id}`} onClick={trackClick}>{ad.title}</Link></h3>
-        <p className="card-meta"><MapPin size={14} aria-hidden="true" /> {ad.city}, {ad.state}</p>
+        <p className="card-meta"><MapPin size={14} aria-hidden="true" /><span>{ad.city}, {ad.state}</span></p>
         <p className="card-foot">
-          <span className="seller">{sellerName} <VerifiedBusinessBadge verified={Boolean(ad.seller?.is_verified || ad.verified)} /></span>
+          <span className="seller"><span className="card-seller-name">{sellerName}</span><VerifiedBusinessBadge verified={Boolean(ad.seller?.is_verified || ad.verified)} /></span>
           <time dateTime={postedAt}>{timeAgo(postedAt)}</time>
         </p>
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
