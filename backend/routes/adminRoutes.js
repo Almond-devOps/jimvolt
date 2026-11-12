@@ -1,5 +1,5 @@
 const express = require('express')
-const { rateLimit } = require('express-rate-limit')
+const { rateLimit } = require('../utils/rateLimit')
 const { body, param, query } = require('express-validator')
 const adminController = require('../controllers/adminController')
 const promotionController = require('../controllers/promotionController')

@@ -103,7 +103,7 @@ test('uses configured Cloudinary storage and only deletes images owned by that u
     const publicId = options.body.get('public_id')
     if (url.endsWith('/image/upload')) {
       return new Response(JSON.stringify({
-        secure_url: `https://res.cloudinary.com/jimvolt-test/image/upload/v123/jimvolt/profiles/${publicId}.png`,
+        secure_url: `https://res.cloudinary.com/jimvolt-test/image/upload/v123/${publicId}.png`,
         public_id: publicId,
       }), { status: 200 })
     }
@@ -119,7 +119,7 @@ test('uses configured Cloudinary storage and only deletes images owned by that u
     await removeProfileImage(stored.url, 42)
     assert.equal(requests.length, 2)
     assert.equal(requests[1].url.endsWith('/image/destroy'), true)
-    assert.equal(requests[1].options.body.get('public_id'), stored.url.split('/').slice(-2).join('/').replace(/\.png$/, ''))
+    assert.equal(requests[1].options.body.get('public_id'), stored.url.split('/').slice(-4).join('/').replace(/\.png$/, ''))
   } finally {
     global.fetch = originalFetch
     cloudinaryKeys.forEach((key, index) => {

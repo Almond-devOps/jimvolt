@@ -42,7 +42,7 @@ function cloudinaryUploadResponse(formData) {
   const publicId = formData.get('public_id')
   return jsonResponse({
     public_id: publicId,
-    secure_url: `https://res.cloudinary.com/jimvolt-test/image/upload/v123/jimvolt/products/${publicId}.png`,
+    secure_url: `https://res.cloudinary.com/jimvolt-test/image/upload/v123/${publicId}.png`,
   })
 }
 
@@ -63,13 +63,10 @@ test('uploads valid product images to the seller folder with unique Cloudinary p
     assert.equal(stored.length, 2)
     assert.equal(stored[0].path, null)
     assert.match(stored[0].url, /^https:\/\/res\.cloudinary\.com\/jimvolt-test\/image\/upload\/v123\/jimvolt\/products\/user_17\/[a-f0-9-]{36}\.png$/)
-    assert.match(stored[0].publicId, /^user_17\/[a-f0-9-]{36}$/)
+    assert.match(stored[0].publicId, /^jimvolt\/products\/user_17\/[a-f0-9-]{36}$/)
     assert.notEqual(stored[0].publicId, stored[1].publicId)
     assert.equal(calls.length, 2)
-    assert.deepEqual(calls.map(({ options }) => options.body.get('folder')), [
-      'jimvolt/products',
-      'jimvolt/products',
-    ])
+    assert.ok(calls.every(({ options }) => !options.body.has('folder')))
     assert.deepEqual(calls.map(({ options }) => options.body.get('public_id')), stored.map((image) => image.publicId))
   })
 })
@@ -141,7 +138,7 @@ test('does not delete a product image belonging to a different seller', async ()
     await removeProductImages([{
       url: 'https://res.cloudinary.com/jimvolt-test/image/upload/v123/jimvolt/products/user_42/123e4567-e89b-12d3-a456-426614174000.png',
       path: null,
-      publicId: 'user_42/123e4567-e89b-12d3-a456-426614174000',
+      publicId: 'jimvolt/products/user_42/123e4567-e89b-12d3-a456-426614174000',
     }], 17)
     assert.equal(deleteAttempted, false)
   })

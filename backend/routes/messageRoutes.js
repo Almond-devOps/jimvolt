@@ -1,5 +1,5 @@
 const express = require('express')
-const { rateLimit } = require('express-rate-limit')
+const { rateLimit } = require('../utils/rateLimit')
 const { body, param, query } = require('express-validator')
 const authenticate = require('../middleware/authMiddleware')
 const { asyncHandler } = require('../middleware/errorMiddleware')

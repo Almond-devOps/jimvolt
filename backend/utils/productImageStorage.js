@@ -10,7 +10,7 @@ const imageTypes = {
   'image/png': 'png',
   'image/webp': 'webp',
 }
-const managedPublicId = /^user_(\d+)\/([a-f0-9-]{36})$/i
+const managedPublicId = /^jimvolt\/products\/user_(\d+)\/([a-f0-9-]{36})$/i
 const managedImageFile = /^([a-f0-9-]{36})\.(jpg|png|webp)$/i
 
 function storageError(message, statusCode) {
@@ -73,7 +73,7 @@ function publicIdFromUrl(imageUrl, sellerId, cloudName) {
   const resourcePath = url.pathname.slice(prefix.length).replace(/^v\d+\//, '')
   const match = resourcePath.match(/^jimvolt\/products\/user_(\d+)\/([a-f0-9-]{36})\.(jpg|png|webp)$/i)
   if (!match || match[1] !== sellerId) return null
-  return `user_${match[1]}/${match[2]}`
+  return `jimvolt/products/user_${match[1]}/${match[2]}`
 }
 
 function getManagedPublicId(image, sellerId, cloudName) {
@@ -86,9 +86,9 @@ function getManagedPublicId(image, sellerId, cloudName) {
 }
 
 async function uploadCloudinaryImage(file, sellerId, actualType, extension, config) {
-  const publicId = `user_${sellerId}/${randomUUID()}`
+  const publicId = `jimvolt/products/user_${sellerId}/${randomUUID()}`
   const timestamp = String(Math.floor(Date.now() / 1000))
-  const params = { folder: 'jimvolt/products', public_id: publicId, timestamp }
+  const params = { public_id: publicId, timestamp }
   const formData = new FormData()
   formData.append('file', new Blob([file.buffer], { type: actualType }), `product.${extension}`)
   formData.append('api_key', config.apiKey)

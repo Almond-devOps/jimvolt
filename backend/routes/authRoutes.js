@@ -1,5 +1,5 @@
 const express = require('express')
-const { rateLimit } = require('express-rate-limit')
+const { rateLimit } = require('../utils/rateLimit')
 const { body } = require('express-validator')
 const authController = require('../controllers/authController')
 const authenticate = require('../middleware/authMiddleware')
