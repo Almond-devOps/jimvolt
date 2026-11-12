@@ -79,6 +79,7 @@ export default function App() {
           <Route path="/dashboard/notifications" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/promotions" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/ads/:id/edit" element={<ProtectedRoute><PostAdPage /></ProtectedRoute>} />
+          <Route path="/dashboard/business-profile" element={<Navigate to="/dashboard" replace />} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/account-settings" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
           <Route path="/post-ad" element={<ProtectedRoute><PostAdPage /></ProtectedRoute>} />

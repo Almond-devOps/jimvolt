@@ -8,10 +8,27 @@ test('removes the dashboard business profile page and its entry points', () => {
   const app = source('../src/App.jsx');
   const dashboard = source('../src/pages/DashboardPage.jsx');
 
-  assert.doesNotMatch(app, /\/dashboard\/business-profile/);
+  // The route may only appear as a Navigate redirect, never as a rendered page
+  if (app.includes('/dashboard/business-profile')) {
+    assert.match(
+      app,
+      /path="\/dashboard\/business-profile"[^>]*element=\{<Navigate/,
+      '/dashboard/business-profile must be a Navigate redirect, not a rendered page',
+    );
+  }
+
   assert.doesNotMatch(
     dashboard,
     /\/dashboard\/business-profile|Business Profile|function BusinessProfile|emptyBusinessProfile|getBusinessProfile|saveBusinessProfile/,
+  );
+});
+
+test('/dashboard/business-profile redirects to /dashboard in the routing config', () => {
+  const app = source('../src/App.jsx');
+  assert.match(
+    app,
+    /path="\/dashboard\/business-profile"[^>]*Navigate[^>]*to="\/dashboard"/,
+    'App.jsx must redirect /dashboard/business-profile to /dashboard',
   );
 });
 
