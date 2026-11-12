@@ -445,7 +445,7 @@ export default function MessagesPage() {
               {hasMoreMessages && <button type="button" className="load-older-messages" onClick={loadOlderMessages} disabled={loadingOlder}>
                 {loadingOlder ? 'Loading earlier messages…' : 'Load earlier messages'}
               </button>}
-              {loadingMessages ? <div className="chat-loading"><LoaderCircle className="spin" /> Loading messages…</div>
+              {loadingMessages ? <div className="chat-loading" role="status" aria-label="Loading messages"><span className="shimmer shimmer-line" style={{ width: '60%' }} /><span className="shimmer shimmer-line" style={{ width: '45%' }} /><span className="shimmer shimmer-line" style={{ width: '55%' }} /></div>
                 : error ? <div className="notice error" role="alert">{error}</div>
                   : !messages.length ? <div className="chat-first-message"><MessageCircle size={26} /><p>Say hello to start the conversation.</p></div>
                     : messages.map((item) => {

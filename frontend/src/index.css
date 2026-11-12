@@ -336,7 +336,7 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
 .seller-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; }
 .dashboard-content-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); align-items: start; gap: 18px; }
 .dashboard-panel { min-width: 0; }
-.dashboard-panel h2, .analytics-toolbar h2, .business-profile-panel h2 { font-size: 1.1rem; }
+.dashboard-panel h2, .analytics-toolbar h2 { font-size: 1.1rem; }
 .dashboard-panel .panel-header { align-items: flex-start; }
 .seller-ad-title { display: flex; align-items: center; gap: 10px; min-width: 190px; }
 .seller-ad-title img, .seller-ad-placeholder { display: grid; place-items: center; width: 46px; height: 42px; flex: 0 0 auto; border-radius: 8px; object-fit: cover; background: #E8F0FC; color: var(--blue); }
@@ -401,10 +401,9 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
 .chart-frame svg { display: block; width: 100%; height: 210px; overflow: visible; }
 .chart-gridline { stroke: #E5EAF2; stroke-width: 1; }
 .chart-axis { display: flex; justify-content: space-between; color: var(--muted); font-size: .72rem; }
-.business-profile-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.business-description-field, .business-profile-submit, .verification-file-field { grid-column: 1 / -1; }
-.business-profile-submit { display: flex; justify-content: flex-end; }
-.business-profile-panel .panel-header { margin-bottom: 20px; }
+.verification-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.verification-description-field, .verification-submit, .verification-file-field { grid-column: 1 / -1; }
+.verification-submit { display: flex; justify-content: flex-end; }
 .verification-page { display: grid; gap: 18px; }
 .verification-status-card { display: flex; align-items: center; gap: 16px; }
 .verification-status-card > div:nth-child(2) { flex: 1; }
@@ -1300,3 +1299,10 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
   .promotion-package-options { grid-template-columns: minmax(0, 1fr); }
   .admin-promotion-form-row { grid-template-columns: minmax(0, 1fr); }
 }
+/* Shimmer loading states */
+.shimmer { background: linear-gradient(90deg, #EAF0F8 25%, #F5F8FC 50%, #EAF0F8 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 10px; }
+.shimmer-line { display: block; height: 14px; border-radius: 7px; }
+.loading-card:not(:has(*)), .admin-chart-loading { font-size: 0; color: transparent; background: linear-gradient(90deg, #EAF0F8 25%, #F5F8FC 50%, #EAF0F8 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 12px; }
+.admin-loading { font-size: 0; }
+.admin-loading::after { content: ''; flex: 1; height: 44px; border-radius: 12px; background: linear-gradient(90deg, #EAF0F8 25%, #F5F8FC 50%, #EAF0F8 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
+@media (prefers-reduced-motion: reduce) { .shimmer, .skeleton, .loading-card, .admin-chart-loading, .admin-loading::after, .conversation-loading span { animation: none; } }

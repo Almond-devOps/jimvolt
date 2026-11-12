@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  BarChart3, Bell, BriefcaseBusiness, CheckCircle2, CircleHelp, Eye, FileCheck2, FolderOpen,
-  Globe2, LayoutDashboard, Menu, MessageSquareText, Plus, Search, Settings, ShieldCheck,
+  BarChart3, Bell, CheckCircle2, CircleHelp, Eye, FileCheck2, FolderOpen,
+  LayoutDashboard, Menu, MessageSquareText, Plus, Search, Settings, ShieldCheck,
   TimerReset, Trash2, UserCircle2, X, XCircle, Copy, Pause, Play, Pencil, ExternalLink,
   Megaphone, Heart,
 } from 'lucide-react';
@@ -11,9 +11,9 @@ import LogoutAction from '../components/LogoutAction.jsx';
 import { getCategories } from '../services/listingService.js';
 import { deleteAd } from '../services/listingService.js';
 import {
-  duplicateSellerAd, getAdvertisementAnalytics, getBusinessProfile, getSellerAds,
+  duplicateSellerAd, getAdvertisementAnalytics, getSellerAds,
   getSellerAnalytics, getSellerDashboard, getSellerNotifications, getSellerVerification,
-  markSellerNotificationRead, saveBusinessProfile, submitSellerVerification, updateSellerVerification,
+  markSellerNotificationRead, submitSellerVerification, updateSellerVerification,
   updateSellerAdStatus,
 } from '../services/sellerService.js';
 import { NIGERIAN_STATES } from '../utils/constants.js';
@@ -33,7 +33,6 @@ const navigation = [
   { label: 'Messages', path: '/messages', icon: MessageSquareText },
   { label: 'Promote Your Products', path: '/dashboard/promotions', icon: Megaphone },
   { label: 'Analytics', path: '/dashboard/analytics', icon: BarChart3 },
-  { label: 'Business Profile', path: '/dashboard/business-profile', icon: BriefcaseBusiness },
   { label: 'Verification', path: '/dashboard/verification', icon: FileCheck2 },
   { label: 'Notifications', path: '/dashboard/notifications', icon: Bell },
   { label: 'Account Settings', path: '/account-settings', icon: Settings },
@@ -43,7 +42,6 @@ const sectionTitles = {
   '/dashboard': 'Overview',
   '/dashboard/ads': 'My Advertisements',
   '/dashboard/analytics': 'Analytics',
-  '/dashboard/business-profile': 'Business Profile',
   '/dashboard/verification': 'Seller Verification',
   '/dashboard/notifications': 'Notifications',
 };
@@ -147,7 +145,6 @@ export default function DashboardPage() {
         {location.pathname === '/dashboard/ads' && <AdvertisementManagement setToast={setToast} />}
         {location.pathname === '/dashboard/promotions' && <PromotionManagement setToast={setToast} />}
         {isAnalyticsPath && <Analytics />}
-        {location.pathname === '/dashboard/business-profile' && <BusinessProfile setToast={setToast} />}
         {location.pathname === '/dashboard/verification' && <Verification setToast={setToast} />}
         {location.pathname === '/dashboard/notifications' && <Notifications setUnread={setUnread} />}
       </main>
@@ -212,7 +209,6 @@ function Overview({ setToast }) {
       <section className="panel dashboard-panel quick-actions">
         <h2>Quick actions</h2>
         <Link to="/post-ad" className="quick-action"><Plus size={18} /> Post an advertisement</Link>
-        <Link to="/dashboard/business-profile" className="quick-action"><BriefcaseBusiness size={18} /> Complete business profile</Link>
         <Link to="/dashboard/verification" className="quick-action"><ShieldCheck size={18} /> Request seller verification</Link>
         <Link to="/dashboard/analytics" className="quick-action"><BarChart3 size={18} /> Review performance</Link>
       </section>
@@ -690,82 +686,6 @@ function MetricChart({ title, metric, data, color }) {
   </section>;
 }
 
-const emptyBusinessProfile = {
-  businessName: '', logoUrl: '', description: '', email: '', phone: '', whatsapp: '',
-  websiteUrl: '', address: '', state: '', city: '', yearsInBusiness: '', operatingHours: '', categoryId: '',
-};
-
-function BusinessProfile({ setToast }) {
-  const [form, setForm] = useState(emptyBusinessProfile);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [publicSlug, setPublicSlug] = useState('');
-  useEffect(() => {
-    let active = true;
-    Promise.all([getBusinessProfile(), getCategories()])
-      .then(([profileResponse, availableCategories]) => {
-        if (!active) return;
-        const profile = profileResponse.data.profile;
-        setCategories(availableCategories);
-        if (profile) {
-          setForm({
-            businessName: profile.business_name || '', logoUrl: profile.logo_url || '',
-            description: profile.description || '', email: profile.email || '', phone: profile.phone || '',
-            whatsapp: profile.whatsapp || '', websiteUrl: profile.website_url || '', address: profile.address || '',
-            state: profile.state || '', city: profile.city || '', yearsInBusiness: profile.years_in_business ?? '',
-            operatingHours: profile.operating_hours || '', categoryId: profile.category_id || '',
-          });
-          setPublicSlug(profile.slug);
-        }
-      })
-      .catch((requestError) => active && setError(messageFrom(requestError, 'Could not load the business profile.')))
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
-  }, []);
-  const update = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
-  const submit = async (event) => {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-    try {
-      const { data } = await saveBusinessProfile({
-        ...form, yearsInBusiness: form.yearsInBusiness === '' ? '' : Number(form.yearsInBusiness),
-        categoryId: form.categoryId || '',
-      });
-      setForm((current) => ({ ...current, ...{
-        businessName: data.profile.business_name,
-      } }));
-      setPublicSlug(data.profile.slug);
-      setToast(data.message);
-    } catch (requestError) { setError(messageFrom(requestError, 'Could not save your business profile.')); }
-    finally { setSaving(false); }
-  };
-
-  if (loading) return <div className="panel loading-card">Loading business profile...</div>;
-  return <section className="panel business-profile-panel">
-    <div className="panel-header"><div><h2>Your business presence</h2><p className="muted">Create a public profile to help buyers learn about your business.</p></div>{publicSlug && <Link className="btn btn-white" to={`/seller/${publicSlug}`}><Globe2 size={16} /> View public page</Link>}</div>
-    {error && <div className="notice error" role="alert">{error}</div>}
-    <form className="business-profile-form" onSubmit={submit}>
-      <label className="field"><span>Business name *</span><input name="businessName" required minLength="2" maxLength="160" value={form.businessName} onChange={update} /></label>
-      <label className="field"><span>Business logo URL</span><input name="logoUrl" type="url" maxLength="2048" placeholder="https://example.com/logo.png" value={form.logoUrl} onChange={update} /></label>
-      <label className="field business-description-field"><span>Business description</span><textarea name="description" rows="4" maxLength="5000" value={form.description} onChange={update} placeholder="Describe your renewable energy products, services, experience and coverage." /></label>
-      <label className="field"><span>Business email</span><input name="email" type="email" value={form.email} onChange={update} /></label>
-      <label className="field"><span>Business phone</span><input name="phone" type="tel" value={form.phone} onChange={update} /></label>
-      <label className="field"><span>WhatsApp number</span><input name="whatsapp" type="tel" value={form.whatsapp} onChange={update} /></label>
-      <label className="field"><span>Website</span><input name="websiteUrl" type="url" value={form.websiteUrl} onChange={update} placeholder="https://" /></label>
-      <label className="field"><span>Business category</span><select name="categoryId" value={form.categoryId} onChange={update}><option value="">Choose category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-      <label className="field"><span>Business address</span><input name="address" maxLength="255" value={form.address} onChange={update} /></label>
-      <label className="field"><span>State</span><select name="state" value={form.state} onChange={update}><option value="">Select state</option>{NIGERIAN_STATES.map((state) => <option key={state}>{state}</option>)}</select></label>
-      <label className="field"><span>City</span><input name="city" maxLength="120" value={form.city} onChange={update} /></label>
-      <label className="field"><span>Years in business</span><input name="yearsInBusiness" type="number" min="0" max="200" value={form.yearsInBusiness} onChange={update} /></label>
-      <label className="field"><span>Operating hours</span><input name="operatingHours" maxLength="500" value={form.operatingHours} onChange={update} placeholder="Mon–Fri, 9am–5pm" /></label>
-      <div className="business-profile-submit"><button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save business profile'}</button></div>
-    </form>
-  </section>;
-}
-
 function Verification({ setToast }) {
   const [verification, setVerification] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -869,7 +789,7 @@ function Verification({ setToast }) {
     {verification?.admin_notes && (verification.status === 'information_requested' || verification.status === 'rejected' || verification.status === 'revoked') && <div className={`notice ${verification.status === 'rejected' ? 'error' : 'success'}`} role="status"><strong>Administrator feedback:</strong> {verification.rejection_reason || verification.admin_notes}</div>}
     {verification?.status !== 'pending' && verification?.status !== 'verified' && verification?.status !== 'revoked' && <section className="panel">
       <div className="panel-header"><div><h2>Submit verification details</h2><p className="muted">Documents are private and accessible only to authorized administrators.</p></div></div>
-      <form className="business-profile-form" onSubmit={submit}>
+      <form className="verification-form" onSubmit={submit}>
         <label className="field"><span>Verification type *</span><select name="verificationType" value={form.verificationType} onChange={update}><option value="registered_business">Registered business</option><option value="renewable_energy_company">Renewable energy company</option><option value="individual">Individual seller</option></select></label>
         <label className="field"><span>Business name *</span><input name="businessName" required minLength="2" maxLength="160" value={form.businessName} onChange={update} /></label>
         <label className="field"><span>Business owner *</span><input name="businessOwner" required minLength="2" maxLength="120" value={form.businessOwner} onChange={update} /></label>
@@ -882,11 +802,11 @@ function Verification({ setToast }) {
         <label className="field"><span>Business category</span><select name="businessCategoryId" value={form.businessCategoryId} onChange={update}><option value="">Choose category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
         <label className="field"><span>CAC registration number</span><input name="registrationNumber" maxLength="100" value={form.registrationNumber} onChange={update} /></label>
         <label className="field"><span>Business website</span><input name="website" type="url" maxLength="2048" placeholder="https://" value={form.website} onChange={update} /></label>
-        <label className="field business-description-field"><span>Business description</span><textarea name="businessDescription" rows="3" maxLength="5000" value={form.businessDescription} onChange={update} /></label>
+        <label className="field verification-description-field"><span>Business description</span><textarea name="businessDescription" rows="3" maxLength="5000" value={form.businessDescription} onChange={update} /></label>
         <label className="field verification-file-field"><span>CAC certificate <small>PDF, PNG, JPEG or iPhone HEIC · maximum 5 MB</small></span><input type="file" accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'cacDocument')} /></label>
         <label className="field verification-file-field"><span>Business identity / supporting document {verification?.has_identity_document ? '' : '*'} <small>PDF, PNG, JPEG or iPhone HEIC · maximum 5 MB</small></span><input type="file" required={!verification?.has_identity_document} accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'identityDocument')} /></label>
         <label className="field verification-file-field"><span>Additional supporting document <small>PDF, PNG, JPEG or iPhone HEIC · maximum 5 MB</small></span><input type="file" accept={DOCUMENT_ACCEPT} onChange={(event) => pickDocument(event, 'additionalDocument')} /></label>
-        <div className="business-profile-submit"><button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Submitting...' : 'Submit for review'}</button></div>
+        <div className="verification-submit"><button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Submitting...' : 'Submit for review'}</button></div>
       </form>
     </section>}
   </div>;

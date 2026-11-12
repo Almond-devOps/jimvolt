@@ -50,40 +50,6 @@ async function getDashboard(userId) {
   }
 }
 
-async function getProfile(userId) {
-  const [rows] = await pool.execute(
-    `SELECT sp.*, c.name AS category_name, u.full_name, u.profile_image,
-            (SELECT sv.status = 'verified' FROM seller_verifications sv
-             WHERE sv.user_id = u.id ORDER BY sv.id DESC LIMIT 1) AS is_verified,
-            u.created_at AS member_since
-     FROM seller_profiles sp
-     JOIN users u ON u.id = sp.user_id
-     LEFT JOIN categories c ON c.id = sp.category_id
-     WHERE sp.user_id = ? LIMIT 1`,
-    [userId],
-  )
-  return rows[0] || null
-}
-
-async function saveProfile(userId, profile) {
-  const [result] = await pool.execute(
-    `INSERT INTO seller_profiles
-       (user_id, business_name, slug, logo_url, description, email, phone, whatsapp,
-        website_url, address, state, city, years_in_business, operating_hours, category_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE
-       business_name = VALUES(business_name), slug = VALUES(slug), logo_url = VALUES(logo_url),
-       description = VALUES(description), email = VALUES(email), phone = VALUES(phone),
-       whatsapp = VALUES(whatsapp), website_url = VALUES(website_url), address = VALUES(address),
-       state = VALUES(state), city = VALUES(city), years_in_business = VALUES(years_in_business),
-       operating_hours = VALUES(operating_hours), category_id = VALUES(category_id)`,
-    [userId, profile.businessName, profile.slug, profile.logoUrl, profile.description,
-      profile.email, profile.phone, profile.whatsapp, profile.websiteUrl, profile.address,
-      profile.state, profile.city, profile.yearsInBusiness, profile.operatingHours, profile.categoryId],
-  )
-  return result
-}
-
 async function getPublicProfile(slug) {
   const [rows] = await pool.execute(
     `SELECT sp.business_name, sp.slug, sp.logo_url, sp.description, sp.email, sp.phone,
@@ -594,7 +560,6 @@ module.exports = {
   getAdvertisementOwner,
   getAnalytics,
   getDashboard,
-  getProfile,
   getPublicProfile,
   getPublicProfileByUserId,
   getVerification,
@@ -607,7 +572,6 @@ module.exports = {
   reviewVerification,
   requestVerificationInfo,
   revokeVerification,
-  saveProfile,
   submitVerification,
   updateVerificationDocuments,
 }

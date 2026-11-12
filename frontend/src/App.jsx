@@ -20,7 +20,7 @@ import AdminVerificationsPage from './pages/AdminVerificationsPage.jsx';
 import VerifyEmailPage from './pages/VerifyEmailPage.jsx';
 import SellersPage from './pages/SellersPage.jsx';
 import SellerDetailPage from './pages/SellerDetailPage.jsx';
-import BusinessSellerPage from './pages/BusinessSellerPage.jsx';
+import SellerStorefrontPage from './pages/SellerStorefrontPage.jsx';
 import InformationPage from './pages/InformationPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
@@ -66,7 +66,7 @@ export default function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/sellers" element={<SellersPage />} />
           <Route path="/sellers/:id" element={<SellerDetailPage />} />
-          <Route path="/seller/:slug" element={<BusinessSellerPage />} />
+          <Route path="/seller/:slug" element={<SellerStorefrontPage />} />
           <Route path="/safety" element={<InformationPage />} />
           <Route path="/contact" element={<InformationPage />} />
           <Route path="/terms" element={<InformationPage />} />
@@ -75,11 +75,11 @@ export default function App() {
           <Route path="/dashboard/ads" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/analytics" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/analytics/:advertisementId" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-          <Route path="/dashboard/business-profile" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/verification" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/notifications" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/promotions" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/ads/:id/edit" element={<ProtectedRoute><PostAdPage /></ProtectedRoute>} />
+          <Route path="/dashboard/business-profile" element={<Navigate to="/dashboard" replace />} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/account-settings" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
           <Route path="/post-ad" element={<ProtectedRoute><PostAdPage /></ProtectedRoute>} />
