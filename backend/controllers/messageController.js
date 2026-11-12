@@ -3,6 +3,7 @@ const { validationResult } = require('express-validator')
 const adModel = require('../models/adModel')
 const messageModel = require('../models/messageModel')
 const { detectImageType } = require('../utils/detectImageType')
+const { rejectedUploadError } = require('../utils/cloudinaryErrors')
 const { isValidMessageAttachment } = require('../utils/messageAttachment')
 
 function checkValidation(req) {
@@ -23,7 +24,7 @@ function invalid(message, statusCode = 400) {
 function cloudinaryConfig() {
   const { CLOUDINARY_CLOUD_NAME: cloudName, CLOUDINARY_API_KEY: apiKey, CLOUDINARY_API_SECRET: apiSecret } = process.env
   if (!cloudName || !apiKey || !apiSecret) {
-    throw invalid('Image messaging is not configured on this server.', 503)
+    throw invalid('Image attachments are not set up on this server yet: Cloudinary storage is missing. Please contact support.', 503)
   }
   return { cloudName, apiKey, apiSecret }
 }
@@ -34,7 +35,7 @@ async function uploadImages(req, res) {
   const uploaded = []
   for (const file of req.files) {
     if (detectImageType(file.buffer) !== file.mimetype) {
-      throw invalid('An image file has an invalid or unsupported file signature.')
+      throw invalid(`${file.originalname ? `"${file.originalname}"` : 'This file'} is not a valid JPG, PNG, WebP or GIF image, or its file type does not match its contents.`)
     }
 
     const publicId = `user_${req.user.id}/${crypto.randomUUID()}`
@@ -55,11 +56,7 @@ async function uploadImages(req, res) {
       `https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`,
       { method: 'POST', body: formData, signal: AbortSignal.timeout(30000) },
     )
-    if (!response.ok) {
-      const error = new Error('Image upload service could not accept the selected image.')
-      error.statusCode = 502
-      throw error
-    }
+    if (!response.ok) throw await rejectedUploadError(response)
     const result = await response.json()
     if (typeof result.secure_url !== 'string' || typeof result.public_id !== 'string') {
       const error = new Error('Image upload service returned an invalid response.')

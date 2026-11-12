@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
+import { IMAGE_ACCEPT_WITH_GIF, describeImageProblem, prepareImage } from '../utils/imageFiles.js';
 import UserAvatar from '../components/UserAvatar.jsx';
 import {
   archiveConversation, getConversation, getConversationMessages, getConversations,
@@ -291,26 +292,28 @@ export default function MessagesPage() {
     }
   };
 
-  const addFiles = (event) => {
+  const addFiles = async (event) => {
     const selected = Array.from(event.target.files || []);
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    event.target.value = '';
     const accepted = [];
-    for (const file of selected) {
-      if (!allowed.includes(file.type)) {
-        setError('Use a JPG, PNG, WebP, or GIF image.');
-      } else if (file.size > 5 * 1024 * 1024) {
-        setError('Each image must be 5 MB or smaller.');
-      } else {
-        accepted.push({ file, preview: URL.createObjectURL(file) });
+    const problems = [];
+    for (const original of selected) {
+      const problem = describeImageProblem(original, { allowGif: true });
+      if (problem) {
+        problems.push(`"${original.name}" ${problem}`);
+        continue;
       }
+      const file = await prepareImage(original);
+      if (file.size > 5 * 1024 * 1024) problems.push(`"${original.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Each image must be 5 MB or smaller.`);
+      else accepted.push({ file, preview: URL.createObjectURL(file) });
     }
     const remaining = Math.max(0, 4 - files.length)
     if (accepted.length > remaining) {
       accepted.slice(remaining).forEach((item) => URL.revokeObjectURL(item.preview))
-      setError('You can attach up to four images per message.')
+      problems.push('You can attach up to four images per message.')
     }
     setFiles((current) => [...current, ...accepted.slice(0, remaining)].slice(0, 4));
-    event.target.value = '';
+    setError(problems.join(' '));
   };
 
   const removeFile = (preview) => {
@@ -463,7 +466,7 @@ export default function MessagesPage() {
               <button type="button" onClick={() => removeFile(item.preview)} aria-label="Remove image"><X size={14} /></button>
             </span>)}</div>}
             <form className="chat-composer" onSubmit={send}>
-              <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden onChange={addFiles} />
+              <input ref={fileInput} type="file" accept={IMAGE_ACCEPT_WITH_GIF} multiple hidden onChange={addFiles} />
               <button type="button" className="composer-attach" aria-label="Attach images" title="Attach images" onClick={() => fileInput.current?.click()} disabled={files.length >= 4}><ImagePlus size={20} /></button>
               <textarea value={messageText} onChange={(event) => handleTyping(event.target.value)} onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); event.currentTarget.form.requestSubmit(); }

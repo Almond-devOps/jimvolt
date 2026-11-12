@@ -7,8 +7,8 @@ export const duplicateSellerAd = (id) => api.post(`/seller/ads/${id}/duplicate`)
 export const getSellerAnalytics = (params = {}) => api.get('/seller/analytics', { params });
 export const getAdvertisementAnalytics = (id, params = {}) => api.get(`/seller/analytics/${id}`, { params });
 export const getSellerVerification = () => api.get('/seller/verification');
-export const submitSellerVerification = (formData) => api.post('/seller/verification', formData);
-export const updateSellerVerification = (formData) => api.put('/seller/verification', formData);
+export const submitSellerVerification = (formData) => api.post('/seller/verification', formData, { timeout: 120000 });
+export const updateSellerVerification = (formData) => api.put('/seller/verification', formData, { timeout: 120000 });
 export const getSellerNotifications = () => api.get('/seller/notifications');
 export const markSellerNotificationRead = (id) => api.put(`/seller/notifications/${id}/read`);
 export const getSellerStorefront = (slug) => api.get(`/seller/public/${encodeURIComponent(slug)}`);

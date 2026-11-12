@@ -2,6 +2,7 @@ const { createHash, randomUUID } = require('node:crypto')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const { detectImageType } = require('./detectImageType')
+const { rejectedUploadError } = require('./cloudinaryErrors')
 
 const storageDirectory = path.resolve(__dirname, '..', 'uploads', 'products')
 const imageTypes = {
@@ -34,9 +35,7 @@ function getCloudinaryConfig() {
   if (configuredValues === 0 && process.env.NODE_ENV !== 'production') return null
   if (configuredValues !== 3 || !/^[a-z0-9-]+$/i.test(cloudName || '')) {
     throw storageError(
-      process.env.NODE_ENV === 'production'
-        ? 'Product image storage is not configured correctly for production.'
-        : 'Product image storage is not configured correctly.',
+      'Image uploads are not set up on this server yet: Cloudinary storage is missing or incomplete (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET). Please contact support.',
       503,
     )
   }
@@ -106,7 +105,7 @@ async function uploadCloudinaryImage(file, sellerId, actualType, extension, conf
   } catch {
     throw storageError('Product image storage is temporarily unavailable.', 502)
   }
-  if (!response.ok) throw storageError('Product image storage could not accept the selected image.', 502)
+  if (!response.ok) throw await rejectedUploadError(response)
 
   let result
   try {
@@ -125,7 +124,7 @@ async function uploadCloudinaryImage(file, sellerId, actualType, extension, conf
 function validateFile(file) {
   const actualType = detectImageType(file?.buffer)
   if (!actualType || actualType !== file.mimetype || !imageTypes[actualType]) {
-    throw storageError('An image file has an invalid or unsupported file signature.', 400)
+    throw storageError(`${file?.originalname ? `"${file.originalname}"` : 'This file'} is not a valid JPG, PNG, WebP or HEIC image, or its file type does not match its contents.`, 400)
   }
   return { actualType, extension: imageTypes[actualType] }
 }

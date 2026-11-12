@@ -1,4 +1,5 @@
 const multer = require('multer')
+const { heicMimeTypes, looksLikeHeic, normalizeHeicFiles } = require('../utils/heic')
 
 const maxFileSize = Math.max(1, Number.parseInt(process.env.PRODUCT_IMAGE_MAX_FILE_SIZE_MB, 10) || 5) * 1024 * 1024
 const maxFiles = Math.min(10, Math.max(1, Number.parseInt(process.env.PRODUCT_IMAGE_MAX_COUNT, 10) || 10))
@@ -8,8 +9,8 @@ const parser = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: maxFileSize, files: maxFiles, fields: 20, fieldSize: 1024 * 1024 },
   fileFilter(req, file, callback) {
-    if (!allowedTypes.has(file.mimetype)) {
-      const error = new Error('Use JPG, PNG, or WebP images only.')
+    if (!allowedTypes.has(file.mimetype) && !heicMimeTypes.has(file.mimetype) && !looksLikeHeic(file)) {
+      const error = new Error(`"${file.originalname}" is not a supported image. Use JPG, PNG, WebP or iPhone HEIC photos.`)
       error.statusCode = 400
       callback(error)
       return
@@ -20,7 +21,7 @@ const parser = multer({
 
 function productImageUpload(req, res, next) {
   parser(req, res, (error) => {
-    if (!error) return next()
+    if (!error) return normalizeHeicFiles(req.files).then(() => next(), next)
     if (error.code === 'LIMIT_FILE_SIZE') error.message = `Each image must be ${Math.floor(maxFileSize / (1024 * 1024))} MB or smaller.`
     if (error.code === 'LIMIT_FILE_COUNT') error.message = `You can upload up to ${maxFiles} images.`
     if (error.code === 'LIMIT_UNEXPECTED_FILE') error.message = `You can upload up to ${maxFiles} images using the images field.`
