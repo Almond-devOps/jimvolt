@@ -2,6 +2,7 @@ const fs = require('node:fs/promises')
 const fsSync = require('node:fs')
 const path = require('node:path')
 const mysql = require('mysql2/promise')
+const { withSchemaLock } = require('../utils/schemaLock')
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') })
 
 const requiredVariables = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME']
@@ -67,6 +68,10 @@ async function connectDB() {
 }
 
 async function ensureCoreSchema() {
+  return withSchemaLock(pool, process.env.DB_NAME, initializeCoreSchema)
+}
+
+async function initializeCoreSchema(pool) {
   const schemaPath = path.join(__dirname, 'schema.sql')
   const schema = await fs.readFile(schemaPath, 'utf8')
   const createStatements = schema

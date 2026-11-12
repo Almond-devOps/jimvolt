@@ -66,9 +66,8 @@ function validateProfileImage(file) {
 }
 
 async function storeCloudinaryProfileImage(file, userId, actualType, extension, config) {
-  const publicId = `user_${userId}/${randomUUID()}`
+  const publicId = `jimvolt/profiles/user_${userId}/${randomUUID()}`
   const params = {
-    folder: 'jimvolt/profiles',
     public_id: publicId,
     timestamp: String(Math.floor(Date.now() / 1000)),
   }
@@ -92,7 +91,7 @@ async function storeCloudinaryProfileImage(file, userId, actualType, extension, 
     error.statusCode = 502
     throw error
   }
-  if (typeof result.secure_url !== 'string'
+  if (!result || typeof result.secure_url !== 'string'
     || result.public_id !== publicId
     || getCloudinaryProfilePublicId(result.secure_url, userId, config.cloudName) !== publicId) {
     const error = new Error('Image upload service returned an invalid response.')
@@ -117,7 +116,7 @@ function getCloudinaryProfilePublicId(imageUrl, userId, cloudName) {
   const resourcePath = parsed.pathname.slice(prefix.length).replace(/^v\d+\//, '')
   const match = resourcePath.match(managedCloudinaryProfilePath)
   if (!match || match[1] !== String(userId)) return null
-  return `user_${match[1]}/${match[2]}`
+  return `jimvolt/profiles/user_${match[1]}/${match[2]}`
 }
 
 async function deleteCloudinaryProfileImage(publicId, config) {

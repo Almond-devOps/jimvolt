@@ -24,6 +24,8 @@ const { createSocketServer } = require('./socket')
 const { getAllowedOrigins } = require('./utils/allowedOrigins')
 
 const app = express()
+// Vercel overwrites X-Forwarded-For with the client IP. Trust only its nearest hop.
+if (process.env.VERCEL === '1') app.set('trust proxy', 1)
 let initialization
 const allowedOrigins = getAllowedOrigins()
 
