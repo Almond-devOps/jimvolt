@@ -8,9 +8,3 @@ export const sendConversationMessage = (id, payload) => api.post(`/messages/conv
 export const markConversationRead = (id) => api.put(`/messages/conversations/${id}/read`);
 export const archiveConversation = (id) => api.delete(`/messages/conversations/${id}`);
 export const reportConversation = (id, payload) => api.post(`/messages/conversations/${id}/report`, payload);
-export async function uploadMessageImages(files) {
-  const formData = new FormData();
-  files.forEach((file) => formData.append('images', file));
-  const { data } = await api.post('/messages/uploads', formData, { timeout: 60000 });
-  return data.attachments;
-}

@@ -4,7 +4,6 @@ const { body, param, query } = require('express-validator')
 const authenticate = require('../middleware/authMiddleware')
 const { asyncHandler } = require('../middleware/errorMiddleware')
 const messageController = require('../controllers/messageController')
-const messageImageUpload = require('../middleware/messageImageUpload')
 
 const router = express.Router()
 const messageRateLimit = rateLimit({
@@ -20,13 +19,6 @@ const reportRateLimit = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: { message: 'Too many conversation reports. Please try again later.' },
-})
-const imageUploadRateLimit = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  limit: 12,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { message: 'Too many image uploads. Please try again later.' },
 })
 const conversationId = param('id').isInt({ min: 1 })
 
@@ -48,7 +40,9 @@ router.post(
   body('advertisementId').isInt({ min: 1 }).withMessage('Select a valid advertisement.'),
   asyncHandler(messageController.createConversation),
 )
-router.post('/uploads', imageUploadRateLimit, messageImageUpload, asyncHandler(messageController.uploadImages))
+router.post('/uploads', (req, res) => res.status(410).json({
+  message: 'Image attachments are no longer supported. Send a text message instead.',
+}))
 router.get('/conversations/:id', conversationId, asyncHandler(messageController.getConversation))
 router.get(
   '/conversations/:id/messages',
@@ -61,8 +55,8 @@ router.post(
   '/conversations/:id/messages',
   messageRateLimit,
   conversationId,
-  body('message').optional({ values: 'falsy' }).isString().trim().isLength({ max: 2000 }),
-  body('attachments').optional().isArray({ max: 4 }),
+  body('message').isString().withMessage('Write a text message.').bail().trim()
+    .isLength({ min: 1, max: 2000 }).withMessage('Message must be between 1 and 2000 characters.'),
   asyncHandler(messageController.send),
 )
 router.put('/conversations/:id/read', conversationId, asyncHandler(messageController.markConversationRead))

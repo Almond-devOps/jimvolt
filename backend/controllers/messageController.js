@@ -1,10 +1,6 @@
-const crypto = require('node:crypto')
 const { validationResult } = require('express-validator')
 const adModel = require('../models/adModel')
 const messageModel = require('../models/messageModel')
-const { detectImageType } = require('../utils/detectImageType')
-const { rejectedUploadError } = require('../utils/cloudinaryErrors')
-const { isValidMessageAttachment } = require('../utils/messageAttachment')
 
 function checkValidation(req) {
   const validation = validationResult(req)
@@ -21,51 +17,13 @@ function invalid(message, statusCode = 400) {
   return error
 }
 
-function cloudinaryConfig() {
-  const { CLOUDINARY_CLOUD_NAME: cloudName, CLOUDINARY_API_KEY: apiKey, CLOUDINARY_API_SECRET: apiSecret } = process.env
-  if (!cloudName || !apiKey || !apiSecret) {
-    throw invalid('Image attachments are not set up on this server yet: Cloudinary storage is missing. Please contact support.', 503)
+function rejectAttachments(body) {
+  const fields = ['attachments', 'attachment', 'images', 'image', 'files', 'file',
+    'attachment_url', 'attachmentUrl', 'attachment_public_id', 'attachmentPublicId',
+    'message_type', 'messageType', 'type']
+  if (fields.some((field) => Object.hasOwn(body || {}, field))) {
+    throw invalid('Image attachments are no longer supported. Send a text message instead.')
   }
-  return { cloudName, apiKey, apiSecret }
-}
-
-async function uploadImages(req, res) {
-  const config = cloudinaryConfig()
-  if (!req.files?.length) throw invalid('Select at least one image to upload.')
-  const uploaded = []
-  for (const file of req.files) {
-    if (detectImageType(file.buffer) !== file.mimetype) {
-      throw invalid(`${file.originalname ? `"${file.originalname}"` : 'This file'} is not a valid JPG, PNG, WebP or GIF image, or its file type does not match its contents.`)
-    }
-
-    const publicId = `user_${req.user.id}/${crypto.randomUUID()}`
-    const timestamp = Math.floor(Date.now() / 1000)
-    const folder = 'jimvolt/messages'
-    const signedParams = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}`
-    const signature = crypto.createHash('sha1')
-      .update(`${signedParams}${config.apiSecret}`)
-      .digest('hex')
-    const formData = new FormData()
-    formData.append('file', new Blob([file.buffer], { type: file.mimetype }), 'message-image')
-    formData.append('api_key', config.apiKey)
-    formData.append('timestamp', String(timestamp))
-    formData.append('folder', folder)
-    formData.append('public_id', publicId)
-    formData.append('signature', signature)
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`,
-      { method: 'POST', body: formData, signal: AbortSignal.timeout(30000) },
-    )
-    if (!response.ok) throw await rejectedUploadError(response)
-    const result = await response.json()
-    if (typeof result.secure_url !== 'string' || typeof result.public_id !== 'string') {
-      const error = new Error('Image upload service returned an invalid response.')
-      error.statusCode = 502
-      throw error
-    }
-    uploaded.push({ url: result.secure_url, publicId: result.public_id })
-  }
-  return res.status(201).json({ attachments: uploaded })
 }
 
 async function list(req, res) {
@@ -73,6 +31,7 @@ async function list(req, res) {
 }
 
 async function create(req, res) {
+  rejectAttachments(req.body)
   checkValidation(req)
   const advertisement = await adModel.findPublicById(req.body.advertisementId)
   if (!advertisement) throw invalid('This advertisement is no longer available.', 404)
@@ -153,22 +112,16 @@ async function listMessages(req, res) {
 }
 
 async function send(req, res) {
+  rejectAttachments(req.body)
   checkValidation(req)
   const message = typeof req.body.message === 'string' ? req.body.message.trim() : ''
-  const rawAttachments = Array.isArray(req.body.attachments) ? req.body.attachments : []
-  if (!message && !rawAttachments.length) throw invalid('Write a message or attach an image.')
+  if (!message) throw invalid('Write a text message.')
   if (message.length > 2000) throw invalid('Messages may not exceed 2000 characters.')
-  if (rawAttachments.length > 4) throw invalid('You can attach up to four images per message.')
-  const { cloudName } = rawAttachments.length ? cloudinaryConfig() : { cloudName: '' }
-  if (rawAttachments.some((attachment) => !isValidMessageAttachment(attachment, req.user.id, cloudName))) {
-    throw invalid('One or more image attachments are invalid.')
-  }
 
   const result = await messageModel.sendMessage({
     conversationId: req.params.id,
     senderId: req.user.id,
     message,
-    attachments: rawAttachments,
   })
   if (result === null) throw invalid('Conversation not found.', 404)
   if (result === false) throw invalid('You are not a participant in this conversation.', 403)
@@ -280,5 +233,4 @@ module.exports = {
   reportConversation,
   send,
   setArchived,
-  uploadImages,
 }
