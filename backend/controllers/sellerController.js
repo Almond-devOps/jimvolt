@@ -107,51 +107,6 @@ async function analytics(req, res) {
   return res.json({ ...data, range })
 }
 
-async function profile(req, res) {
-  return res.json({ profile: await sellerModel.getProfile(req.user.id) })
-}
-
-async function updateProfile(req, res) {
-  checkValidation(req)
-  const input = req.body
-  if (input.phone && !isValidNigerianPhone(input.phone)) {
-    const error = new Error('Enter a valid Nigerian business phone number.')
-    error.statusCode = 400
-    throw error
-  }
-  if (input.whatsapp && !isValidNigerianPhone(input.whatsapp)) {
-    const error = new Error('Enter a valid Nigerian WhatsApp number.')
-    error.statusCode = 400
-    throw error
-  }
-  const categoryId = input.categoryId ? Number(input.categoryId) : null
-  if (categoryId && !(await categoryModel.findByIdOrSlug(String(categoryId)))) {
-    const error = new Error('Choose an existing business category.')
-    error.statusCode = 400
-    throw error
-  }
-  const profile = {
-    businessName: input.businessName.trim(),
-    slug: slugify(input.businessName.trim(), req.user.id),
-    logoUrl: input.logoUrl?.trim() || null,
-    description: input.description?.trim() || null,
-    email: input.email?.trim().toLowerCase() || null,
-    phone: input.phone ? normalizeNigerianPhone(input.phone) : null,
-    whatsapp: input.whatsapp ? normalizeNigerianPhone(input.whatsapp) : null,
-    websiteUrl: input.websiteUrl?.trim() || null,
-    address: input.address?.trim() || null,
-    state: input.state?.trim() || null,
-    city: input.city?.trim() || null,
-    yearsInBusiness: input.yearsInBusiness === '' || input.yearsInBusiness === undefined
-      ? null
-      : Number(input.yearsInBusiness),
-    operatingHours: input.operatingHours?.trim() || null,
-    categoryId,
-  }
-  await sellerModel.saveProfile(req.user.id, profile)
-  return res.json({ message: 'Business profile saved.', profile: await sellerModel.getProfile(req.user.id) })
-}
-
 async function publicProfile(req, res) {
   const seller = await sellerModel.getPublicProfile(req.params.slug)
   if (!seller) {
@@ -328,12 +283,10 @@ module.exports = {
   duplicateAdvertisement,
   markNotificationRead,
   notifications,
-  profile,
   publicProfile,
   setAdvertisementStatus,
   submitVerification,
   updateVerification,
   uploadVerificationDocuments,
-  updateProfile,
   verification,
 }

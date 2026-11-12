@@ -48,24 +48,6 @@ const analyticsDateFields = [
 ]
 router.get('/analytics', ...analyticsDateFields, asyncHandler(sellerController.analytics))
 router.get('/analytics/:advertisementId', param('advertisementId').isInt({ min: 1 }), ...analyticsDateFields, asyncHandler(sellerController.analytics))
-router.get('/profile', asyncHandler(sellerController.profile))
-router.put(
-  '/profile',
-  body('businessName').trim().isLength({ min: 2, max: 160 }),
-  body('logoUrl').optional({ values: 'falsy' }).isURL({ protocols: ['http', 'https'], require_protocol: true }).isLength({ max: 2048 }),
-  body('description').optional({ values: 'falsy' }).isLength({ max: 5000 }),
-  body('email').optional({ values: 'falsy' }).isEmail().isLength({ max: 254 }),
-  body('phone').optional({ values: 'falsy' }).isLength({ min: 8, max: 32 }),
-  body('whatsapp').optional({ values: 'falsy' }).isLength({ min: 8, max: 32 }),
-  body('websiteUrl').optional({ values: 'falsy' }).isURL({ protocols: ['http', 'https'], require_protocol: true }).isLength({ max: 2048 }),
-  body('address').optional({ values: 'falsy' }).isLength({ max: 255 }),
-  body('state').optional({ values: 'falsy' }).isLength({ max: 100 }),
-  body('city').optional({ values: 'falsy' }).isLength({ max: 120 }),
-  body('yearsInBusiness').optional({ values: 'falsy' }).isInt({ min: 0, max: 200 }),
-  body('operatingHours').optional({ values: 'falsy' }).isLength({ max: 500 }),
-  body('categoryId').optional({ values: 'falsy' }).isInt({ min: 1 }),
-  asyncHandler(sellerController.updateProfile),
-)
 router.post('/verification', parseVerificationUpload, ...verificationFields, asyncHandler(sellerController.submitVerification))
 router.put('/verification', parseVerificationUpload, ...verificationFields, asyncHandler(sellerController.updateVerification))
 router.post('/verification/documents', parseVerificationUpload, asyncHandler(sellerController.uploadVerificationDocuments))
