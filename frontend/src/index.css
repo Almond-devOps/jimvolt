@@ -585,16 +585,10 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
 .typing-indicator i:nth-child(2) { animation-delay: .15s; }
 .typing-indicator i:nth-child(3) { animation-delay: .3s; }
 @keyframes typing-bounce { to { opacity: .35; transform: translateY(-3px); } }
-.attachment-previews { display: flex; gap: 8px; padding: 10px 16px 0; background: #fff; }
-.attachment-previews > span { position: relative; }
-.attachment-previews img { width: 54px; height: 54px; border-radius: 8px; object-fit: cover; }
-.attachment-previews button { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 50%; background: #172B4D; color: #fff; cursor: pointer; }
 .chat-composer { display: flex; align-items: flex-end; gap: 9px; padding: 12px 15px 10px; border-top: 1px solid var(--line); background: #fff; }
 .chat-composer textarea { flex: 1; max-height: 120px; min-height: 42px; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; outline: 0; background: #F8FAFC; color: var(--text); font: inherit; font-size: .9rem; }
 .chat-composer textarea:focus { border-color: var(--blue); background: #fff; }
-.composer-attach, .send-message-btn { display: grid; flex: 0 0 auto; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 11px; background: transparent; color: var(--blue); cursor: pointer; }
-.composer-attach:hover { background: #EFF4FC; }
-.composer-attach:disabled { opacity: .4; cursor: not-allowed; }
+.send-message-btn { display: grid; flex: 0 0 auto; place-items: center; width: 42px; height: 42px; border: 0; border-radius: 11px; background: transparent; color: var(--blue); cursor: pointer; }
 .send-message-btn { background: var(--blue); color: #fff; }
 .send-message-btn:hover { background: var(--blue-dark); }
 .send-message-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -634,7 +628,7 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
   .chat-history { padding: 14px 12px; }
   .chat-message { max-width: 86%; }
   .chat-composer { gap: 5px; padding: 9px 8px; }
-  .composer-attach, .send-message-btn { width: 38px; height: 40px; }
+  .send-message-btn { width: 38px; height: 40px; }
   .chat-composer textarea { min-height: 40px; padding: 8px; }
 }
 

@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, Archive, BadgeCheck, Check, CheckCheck, ImagePlus, LoaderCircle,
-  MessageCircle, MoreVertical, Search, Send, ShieldAlert, X,
+  ArrowLeft, Archive, BadgeCheck, Check, CheckCheck, LoaderCircle,
+  MessageCircle, MoreVertical, Search, Send, ShieldAlert,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
-import { IMAGE_ACCEPT_WITH_GIF, describeImageProblem, prepareImage } from '../utils/imageFiles.js';
 import UserAvatar from '../components/UserAvatar.jsx';
 import {
   archiveConversation, getConversation, getConversationMessages, getConversations,
-  markConversationRead, reportConversation, sendConversationMessage, uploadMessageImages,
+  markConversationRead, reportConversation, sendConversationMessage,
 } from '../services/messageService.js';
 import { formatNaira } from '../utils/format.js';
 
@@ -42,7 +41,6 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState([]);
   const [search, setSearch] = useState('');
   const [messageText, setMessageText] = useState('');
-  const [files, setFiles] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [typing, setTyping] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
@@ -55,16 +53,9 @@ export default function MessagesPage() {
   const bottomRef = useRef(null);
   const historyRef = useRef(null);
   const previousHistoryHeight = useRef(null);
-  const filesRef = useRef([]);
   const typingTimer = useRef(null);
   const peerTypingTimer = useRef(null);
   const typingActive = useRef(false);
-  const fileInput = useRef(null);
-  filesRef.current = files;
-
-  useEffect(() => () => {
-    filesRef.current.forEach((item) => URL.revokeObjectURL(item.preview));
-  }, []);
 
   const loadConversations = useCallback(async (term = '') => {
     try {
@@ -292,53 +283,17 @@ export default function MessagesPage() {
     }
   };
 
-  const addFiles = async (event) => {
-    const selected = Array.from(event.target.files || []);
-    event.target.value = '';
-    const accepted = [];
-    const problems = [];
-    for (const original of selected) {
-      const problem = describeImageProblem(original, { allowGif: true });
-      if (problem) {
-        problems.push(`"${original.name}" ${problem}`);
-        continue;
-      }
-      const file = await prepareImage(original);
-      if (file.size > 5 * 1024 * 1024) problems.push(`"${original.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Each image must be 5 MB or smaller.`);
-      else accepted.push({ file, preview: URL.createObjectURL(file) });
-    }
-    const remaining = Math.max(0, 4 - files.length)
-    if (accepted.length > remaining) {
-      accepted.slice(remaining).forEach((item) => URL.revokeObjectURL(item.preview))
-      problems.push('You can attach up to four images per message.')
-    }
-    setFiles((current) => [...current, ...accepted.slice(0, remaining)].slice(0, 4));
-    setError(problems.join(' '));
-  };
-
-  const removeFile = (preview) => {
-    setFiles((current) => {
-      const removed = current.find((item) => item.preview === preview);
-      if (removed) URL.revokeObjectURL(removed.preview);
-      return current.filter((item) => item.preview !== preview);
-    });
-  };
-
   const send = async (event) => {
     event.preventDefault();
-    if ((!messageText.trim() && !files.length) || !selectedId || sending) return;
+    if (!messageText.trim() || !selectedId || sending) return;
     setSending(true);
     setError('');
     try {
-      const attachments = files.length ? await uploadMessageImages(files.map((item) => item.file)) : [];
       const { data } = await sendConversationMessage(selectedId, {
         message: messageText.trim(),
-        attachments,
       });
       setMessages((current) => uniqueMessages(current, data.messages || []));
       setMessageText('');
-      files.forEach((item) => URL.revokeObjectURL(item.preview));
-      setFiles([]);
       typingActive.current = false;
       socket?.emit('typing:stop', selectedId);
       await loadConversations(search.trim());
@@ -461,17 +416,11 @@ export default function MessagesPage() {
               <div ref={bottomRef} />
             </div>
             {error && !loadingMessages && <div className="chat-inline-error" role="alert">{error}</div>}
-            {files.length > 0 && <div className="attachment-previews">{files.map((item) => <span key={item.preview}>
-              <img src={item.preview} alt="Selected attachment preview" />
-              <button type="button" onClick={() => removeFile(item.preview)} aria-label="Remove image"><X size={14} /></button>
-            </span>)}</div>}
             <form className="chat-composer" onSubmit={send}>
-              <input ref={fileInput} type="file" accept={IMAGE_ACCEPT_WITH_GIF} multiple hidden onChange={addFiles} />
-              <button type="button" className="composer-attach" aria-label="Attach images" title="Attach images" onClick={() => fileInput.current?.click()} disabled={files.length >= 4}><ImagePlus size={20} /></button>
               <textarea value={messageText} onChange={(event) => handleTyping(event.target.value)} onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); event.currentTarget.form.requestSubmit(); }
               }} rows="1" maxLength="2000" placeholder="Write a message…" aria-label="Write a message" />
-              <button type="submit" className="send-message-btn" disabled={sending || (!messageText.trim() && !files.length)} aria-label="Send message">
+              <button type="submit" className="send-message-btn" disabled={sending || !messageText.trim()} aria-label="Send message">
                 {sending ? <LoaderCircle className="spin" size={18} /> : <Send size={18} />}
               </button>
             </form>

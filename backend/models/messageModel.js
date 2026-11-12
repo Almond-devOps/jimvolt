@@ -183,7 +183,7 @@ async function listMessages(conversationId, userId, { beforeId, limit }) {
   return { messages: rows.slice(0, limit).reverse(), hasMore }
 }
 
-async function sendMessage({ conversationId, senderId, message, attachments = [] }) {
+async function sendMessage({ conversationId, senderId, message }) {
   const connection = await pool.getConnection()
   try {
     await connection.beginTransaction()
@@ -213,17 +213,6 @@ async function sendMessage({ conversationId, senderId, message, attachments = []
       )
       inserted.push(result.insertId)
     }
-    for (const attachment of attachments) {
-      const [result] = await connection.execute(
-        `INSERT INTO messages
-          (conversation_id, sender_id, receiver_id, advertisement_id, message,
-           message_type, message_content, attachment_url, attachment_public_id)
-         VALUES (?, ?, ?, ?, ?, 'image', ?, ?, ?)`,
-        [conversationId, senderId, receiverId, conversation.advertisement_id,
-          attachment.url, attachment.url, attachment.url, attachment.publicId],
-      )
-      inserted.push(result.insertId)
-    }
     if (!inserted.length) {
       await connection.rollback()
       return []
@@ -248,7 +237,7 @@ async function sendMessage({ conversationId, senderId, message, attachments = []
     await connection.execute(
       `INSERT INTO notifications (user_id, type, title, body, related_advertisement_id)
        VALUES (?, 'new_message', 'New message', ?, ?)`,
-      [receiverId, message ? 'You received a new message.' : 'You received an image.',
+      [receiverId, 'You received a new message.',
         conversation.advertisement_id],
     )
     await connection.commit()
