@@ -20,7 +20,6 @@ import AdminVerificationsPage from './pages/AdminVerificationsPage.jsx';
 import VerifyEmailPage from './pages/VerifyEmailPage.jsx';
 import SellersPage from './pages/SellersPage.jsx';
 import SellerDetailPage from './pages/SellerDetailPage.jsx';
-import SellerStorefrontPage from './pages/SellerStorefrontPage.jsx';
 import InformationPage from './pages/InformationPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
