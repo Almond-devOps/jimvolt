@@ -1,4 +1,7 @@
 import api from './api.js';
+import { GUEST_WISHLIST_KEY, queryGuestWishlist, saveGuestProduct, removeGuestProduct } from '../utils/guestWishlist.js';
+const hasSession = () => Boolean(localStorage.getItem('jimvolt_token') || sessionStorage.getItem('jimvolt_token'));
+const localResult = (data) => Promise.resolve({ data });
 
 export const getUserProfile = () => api.get('/users/profile');
 export const updateUserProfile = (payload, onUploadProgress) => api.put('/users/profile', payload, { onUploadProgress, timeout: 60000 });
@@ -7,14 +10,18 @@ export const getDashboard = () => api.get('/users/dashboard');
 export const changePassword = (payload) => api.put('/users/change-password', payload);
 export const updateUserSettings = (payload) => api.put('/users/settings', payload);
 export const getMyAds = () => api.get('/users/my-ads');
-export const getFavourites = (params = {}) => api.get('/favorites', { params });
-export const getFavorites = (params = {}) => api.get('/favorites', { params });
+export const getFavourites = (params = {}) => hasSession() ? api.get('/favorites', { params }) : localResult(queryGuestWishlist(params));
+export const getFavorites = (params = {}) => hasSession() ? api.get('/favorites', { params }) : localResult(queryGuestWishlist(params));
 export const getFavoriteCount = () => api.get('/favorites/count');
-export const addFavourite = (id) => api.post(`/favorites/${id}`);
-export const removeFavourite = (id) => api.delete(`/favorites/${id}`);
-export const removeFavouriteEntry = (id) => api.delete(`/favorites/entry/${id}`);
-export const clearFavourites = () => api.delete('/favorites');
-export const getWishlistPreferences = () => api.get('/favorites/preferences');
+export const addFavourite = (id, ad) => hasSession() ? api.post(`/favorites/${id}`) : localResult(saveGuestProduct(ad));
+export const removeFavourite = (id) => hasSession() ? api.delete(`/favorites/${id}`) : localResult(removeGuestProduct(id));
+export const removeFavouriteEntry = (id) => hasSession() ? api.delete(`/favorites/entry/${id}`) : localResult(removeGuestProduct(id));
+export const clearFavourites = () => {
+  if (hasSession()) return api.delete('/favorites');
+  localStorage.removeItem(GUEST_WISHLIST_KEY);
+  return localResult({});
+};
+export const getWishlistPreferences = () => hasSession() ? api.get('/favorites/preferences') : localResult({ notifyPriceDrops: false });
 export const updateWishlistPreferences = (payload) => api.put('/favorites/preferences', payload);
 export const getRecentlyViewed = (params = {}) => api.get('/recently-viewed', { params });
 export const removeRecentlyViewed = (id) => api.delete(`/recently-viewed/${id}`);

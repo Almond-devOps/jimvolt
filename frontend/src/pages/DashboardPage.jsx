@@ -361,6 +361,8 @@ function PromotionManagement({ setToast }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [checkoutMessage, setCheckoutMessage] = useState('');
+  const [paymentRetry, setPaymentRetry] = useState(0);
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -401,6 +403,8 @@ function PromotionManagement({ setToast }) {
     const reference = searchParams.get('payment_reference');
     if (!reference) return undefined;
     let active = true;
+    let settled = false;
+    setCheckingPayment(true);
     setCheckoutMessage(searchParams.get('checkout_cancelled') === '1'
       ? 'Checkout was closed before confirmation. Payment status is being checked with Bachs.'
       : 'Checking your payment status with Bachs...');
@@ -409,10 +413,12 @@ function PromotionManagement({ setToast }) {
       .then(async ({ data }) => {
         if (!active) return;
         if (data.status === 'succeeded') {
+          settled = true;
           setCheckoutMessage('Bachs confirmed your payment. Your promotion status has been updated.');
           const { data: promotionData } = await getMyPromotions();
           if (active) setPromotions(promotionData.promotions || []);
         } else if (data.status === 'failed') {
+          settled = true;
           setCheckoutMessage(data.message || 'This checkout expired before payment was confirmed.');
         } else {
           setCheckoutMessage('Payment is still processing. Promotions activate only after Bachs confirms payment.');
@@ -422,7 +428,8 @@ function PromotionManagement({ setToast }) {
         if (active) setError(messageFrom(requestError, 'Payment status could not be verified. Please refresh shortly.'));
       })
       .finally(() => {
-        if (active) {
+        if (active) setCheckingPayment(false);
+        if (active && settled) {
           const nextParams = new URLSearchParams(searchParams);
           nextParams.delete('payment_reference');
           nextParams.delete('checkout_cancelled');
@@ -430,7 +437,7 @@ function PromotionManagement({ setToast }) {
         }
       });
     return () => { active = false; };
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, paymentRetry]);
 
   const submitPromotion = async () => {
     if (!selectedAd || !selectedPackage) return;
@@ -464,6 +471,7 @@ function PromotionManagement({ setToast }) {
     <div className="panel-header"><div><h2>Promote Your Products</h2><p className="muted">Increase visibility with a paid marketplace placement.</p></div></div>
     {error && <div className="notice error" role="alert">{error}</div>}
     {checkoutMessage && <div className={`notice ${checkoutMessage.startsWith('Bachs confirmed') ? 'success' : 'promotion-notice'}`} role="status">{checkoutMessage}</div>}
+    {searchParams.get('payment_reference') && <button type="button" className="btn btn-white" disabled={checkingPayment} onClick={() => setPaymentRetry((value) => value + 1)}>{checkingPayment ? 'Checking payment...' : 'Check payment status again'}</button>}
     {loading ? <div className="loading-card" role="status">Loading promotion options...</div> : (
       <>
         <div className="promotion-grid">

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { getCurrentUser, loginAdministrator, loginUser, logoutUser, registerUser } from '../services/authService.js';
 import { getConversations } from '../services/messageService.js';
 import { getFavorites } from '../services/userService.js';
+import { queryGuestWishlist, GUEST_WISHLIST_KEY } from '../utils/guestWishlist.js';
 
 const AuthContext = createContext(null);
 
@@ -42,15 +43,19 @@ export function AuthProvider({ children }) {
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   const socketRef = useRef(null);
+  const favoriteRequest = useRef(0);
 
   const refreshFavorites = useCallback(async () => {
+    const requestId = ++favoriteRequest.current;
     if (!token || !user) {
-      setFavoriteIds([]);
-      setFavoriteCount(0);
-      setFavoritesLoaded(false);
+      const local = queryGuestWishlist();
+      setFavoriteIds(local.favoriteIds);
+      setFavoriteCount(local.total);
+      setFavoritesLoaded(true);
       return;
     }
     const { data } = await getFavorites({ limit: 1 });
+    if (requestId !== favoriteRequest.current) return;
     setFavoriteIds((data.favoriteIds || []).map(String));
     setFavoriteCount(Number(data.total || 0));
     setFavoritesLoaded(true);
@@ -151,19 +156,13 @@ export function AuthProvider({ children }) {
   }, [token, user?.id]);
 
   useEffect(() => {
-    let active = true;
-    if (!token || !user) {
-      setFavoriteIds([]);
-      setFavoriteCount(0);
-      setFavoritesLoaded(false);
-      return () => { active = false; };
-    }
-    refreshFavorites()
-      .catch((error) => {
-        if (active) console.error('Could not load saved product state:', error.message);
-      })
-    return () => { active = false; };
-  }, [refreshFavorites]);
+    refreshFavorites().catch((error) => console.error('Could not load saved products:', error.message));
+    const sync = (event) => {
+      if (!token && event.key === GUEST_WISHLIST_KEY) refreshFavorites();
+    };
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, [refreshFavorites, token]);
 
   const login = async (payload) => {
     const { data } = await loginUser(payload);
@@ -192,6 +191,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = useCallback(() => {
+    favoriteRequest.current++;
     const activeToken = token || getStoredToken();
     if (activeToken) {
       logoutUser(activeToken).catch((error) => {

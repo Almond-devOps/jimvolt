@@ -6,7 +6,7 @@ import ListingSection from '../components/ListingSection.jsx';
 import ImageWithFallback from '../components/ImageWithFallback.jsx';
 import UserAvatar from '../components/UserAvatar.jsx';
 import useAsync from '../hooks/useAsync.js';
-import { getPromoted, getRecent, getPopular, getPopularLocations, getVerifiedSellers } from '../services/listingService.js';
+import { getPromoted, getDiscover, getRecent, getPopular, getPopularLocations, getVerifiedSellers } from '../services/listingService.js';
 
 export default function Home() {
   useEffect(() => { document.title = 'Jimvolt | Buy and Sell Solar, Inverters and Batteries in Nigeria'; }, []);
@@ -38,6 +38,7 @@ export default function Home() {
       </section>
 
       <ListingSection title="Featured Products" subtitle="Sponsored placements from renewable-energy sellers" loader={getPromoted} to="/ads?featured=true" />
+      <ListingSection title="Discover products" loader={getDiscover} to="/ads?sort=random" skeletons={8} />
       <ListingSection title="Recently posted" loader={getRecent} to="/ads?sort=newest" skeletons={8} />
 
       <section className="container">

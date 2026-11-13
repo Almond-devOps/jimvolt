@@ -1316,3 +1316,16 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
     font-size: max(16px, 1rem) !important;
   }
 }
+
+/* The product title provides a real link across the card; save stays independent. */
+.card-title a::after { content: ''; position: absolute; inset: 0; z-index: 1; }
+.card-fav, .card-save-notice { z-index: 2; }
+.card-save-notice { position: relative; font-size: .8rem; margin: 8px 0 0; }
+.card-save-notice a { color: var(--blue); text-decoration: underline; }
+.guest-sign-in { margin-left: auto; white-space: nowrap; }
+
+.seller-rating { margin: 12px 0 20px; }
+.seller-rating-summary { display: flex; align-items: center; gap: 6px; color: var(--blue-dark); font-weight: 600; }
+.seller-rating-summary svg { flex-shrink: 0; color: #b77906; }
+.seller-rating-form { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
+.seller-rating-form .field { flex: 1 1 130px; }

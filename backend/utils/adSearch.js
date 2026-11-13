@@ -86,4 +86,10 @@ function buildFilters(query) {
   return { where: `WHERE ${conditions.join(' AND ')}`, values }
 }
 
-module.exports = { buildFilters, normalizeState, sortOrders }
+function randomOrder(seed) {
+  const value = Number(seed)
+  const safeSeed = Number.isInteger(value) && value >= 0 && value <= 4294967295 ? value : 0
+  return `CRC32(CONCAT(a.id, ':${safeSeed}')), a.id ASC`
+}
+
+module.exports = { buildFilters, normalizeState, sortOrders, randomOrder }

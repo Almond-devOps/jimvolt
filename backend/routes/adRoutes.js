@@ -6,6 +6,9 @@ const { asyncHandler } = require('../middleware/errorMiddleware')
 const { productImageUpload } = require('../middleware/productImageUpload')
 
 const router = express.Router()
+const sellerRatingController = require('../controllers/sellerRatingController')
+const { rateLimit } = require('../utils/rateLimit')
+const ratingLimit = rateLimit({ windowMs: 60000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false })
 const discoveryController = require('../controllers/discoveryController')
 const optionalAuthenticate = authenticate.optional
 
@@ -34,7 +37,8 @@ const searchFields = [
   query('verified').optional({ values: 'falsy' }).isIn(['true', 'false']).withMessage('Verified must be true or false.'),
   query('featured').optional({ values: 'falsy' }).isIn(['true', 'false', '1', '0']).withMessage('Featured must be true or false.'),
   query('recently').optional({ values: 'falsy' }).isIn(['true', 'false']).withMessage('Recently must be true or false.'),
-  query('sort').optional({ values: 'falsy' }).isIn(['newest', 'oldest', 'price_asc', 'price_desc', 'most_viewed', 'popular']).withMessage('Choose a valid sort order.'),
+  query('sort').optional({ values: 'falsy' }).isIn(['random', 'newest', 'oldest', 'price_asc', 'price_desc', 'most_viewed', 'popular']).withMessage('Choose a valid sort order.'),
+  query('seed').optional().isInt({ min: 0, max: 4294967295 }).withMessage('Choose a valid browsing seed.'),
   query('page').optional({ values: 'falsy' }).isInt({ min: 1, max: 1000000 }).withMessage('Page must be a positive integer.'),
   query('limit').optional({ values: 'falsy' }).isInt({ min: 1, max: 50 }).withMessage('Limit must be between 1 and 50.'),
   query('maxPrice').custom((value, { req }) => {
@@ -49,6 +53,8 @@ router.get('/search/suggestions', query('q').optional().trim().isLength({ max: 1
 router.get('/search', ...searchFields, asyncHandler(adController.list))
 router.get('/locations/popular', asyncHandler(adController.popularLocations))
 router.get('/locations/cities', query('state').trim().isLength({ min: 2, max: 100 }), asyncHandler(adController.cities))
+router.get('/sellers/:id/ratings', optionalAuthenticate, param('id').isInt({ min: 1 }), asyncHandler(sellerRatingController.get))
+router.put('/sellers/:id/ratings', authenticate, ratingLimit, param('id').isInt({ min: 1 }), body('score').isInt({ min: 1, max: 5 }).withMessage('Choose a rating from 1 to 5.'), asyncHandler(sellerRatingController.save))
 router.get('/sellers/:id', param('id').isInt({ min: 1 }), asyncHandler(adController.getSeller))
 router.get('/:id/price-history', param('id').isInt({ min: 1 }), asyncHandler(discoveryController.priceHistory))
 router.get('/', ...searchFields, asyncHandler(adController.list))

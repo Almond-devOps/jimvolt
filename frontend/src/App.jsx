@@ -83,8 +83,8 @@ export default function App() {
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/account-settings" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
           <Route path="/post-ad" element={<ProtectedRoute><PostAdPage /></ProtectedRoute>} />
-          <Route path="/saved" element={<ProtectedRoute><FavouritesPage /></ProtectedRoute>} />
-          <Route path="/favourites" element={<ProtectedRoute><FavouritesPage /></ProtectedRoute>} />
+          <Route path="/saved" element={<FavouritesPage />} />
+          <Route path="/favourites" element={<FavouritesPage />} />
           <Route path="/recently-viewed" element={<RecentlyViewedPage />} />
           <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
           <Route path="*" element={<Placeholder />} />

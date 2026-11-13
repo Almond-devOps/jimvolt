@@ -37,3 +37,11 @@ test('normalizes Abuja aliases and exposes only fixed sort SQL', () => {
   assert.equal(sortOrders.price_asc, 'a.price ASC, a.created_at DESC')
   assert.equal(sortOrders.price_desc, 'a.price DESC, a.created_at DESC')
 })
+
+test('random ordering is stable for a browsing seed and rejects SQL in seeds', () => {
+  const { randomOrder } = require('../utils/adSearch')
+  assert.equal(randomOrder(123), randomOrder('123'))
+  assert.notEqual(randomOrder(123), randomOrder(124))
+  assert.match(randomOrder(123), /a.id ASC$/)
+  assert.equal(randomOrder('1); DROP TABLE users'), randomOrder(0))
+})
