@@ -27,6 +27,8 @@ function SearchSkeletons() {
 export default function AdsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState([]);
+  const [browsingSeed] = useState(() => Math.floor(Math.random() * 4294967296));
+  const defaultSort = searchParams.get('q') ? 'newest' : 'random';
   const [categories, setCategories] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
   const [loading, setLoading] = useState(true);
@@ -39,9 +41,10 @@ export default function AdsPage() {
     const params = Object.fromEntries(searchParams.entries());
     params.limit = '20';
     params.page ||= '1';
-    params.sort ||= 'newest';
+    params.sort ||= params.q ? 'newest' : 'random';
+    if (params.sort === 'random') params.seed ||= String(browsingSeed);
     return JSON.stringify(params);
-  }, [searchParams]);
+  }, [searchParams, browsingSeed]);
 
   useEffect(() => {
     setDraft(draftFromParams(searchParams));
@@ -79,7 +82,7 @@ export default function AdsPage() {
     for (const key of filterKeys) {
       if (draft[key]) params.set(key, draft[key]);
     }
-    params.set('sort', searchParams.get('sort') || 'newest');
+    params.set('sort', searchParams.get('sort') || defaultSort);
     params.set('page', '1');
     params.set('limit', '20');
     setSearchParams(params);
@@ -89,7 +92,7 @@ export default function AdsPage() {
     const params = new URLSearchParams();
     const currentQuery = searchParams.get('q')?.trim();
     if (currentQuery) params.set('q', currentQuery);
-    params.set('sort', searchParams.get('sort') || 'newest');
+    params.set('sort', searchParams.get('sort') || defaultSort);
     params.set('page', '1');
     params.set('limit', '20');
     setSearchParams(params);
@@ -132,7 +135,8 @@ export default function AdsPage() {
         </div>
         <div className="search-results-actions">
           <button type="button" className="btn btn-white mobile-filter-button" aria-expanded={mobileFiltersOpen} aria-controls="advertisement-filters" onClick={() => setMobileFiltersOpen(true)}><Filter size={17} /> Filters{selectedFilterCount > 0 && <span className="filter-count">{selectedFilterCount}</span>}</button>
-          <label className="sort-control"><span>Sort by</span><select value={searchParams.get('sort') || 'newest'} onChange={(event) => updateQuery('sort', event.target.value)}>
+          <label className="sort-control"><span>Sort by</span><select value={searchParams.get('sort') || defaultSort} onChange={(event) => updateQuery('sort', event.target.value)}>
+            <option value="random">Discover products</option>
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="price_asc">Lowest price</option>

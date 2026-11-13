@@ -1,6 +1,6 @@
 # Jimvolt Renewable Energy Marketplace
 
-Jimvolt is a React marketplace for renewable-energy products and services, backed by an Express API and MySQL. Public visitors can browse approved advertisements; registered users can post listings, message sellers, save products, and manage their accounts. Administrators can review submitted advertisements.
+Jimvolt is a React marketplace for renewable-energy products and services, backed by an Express API and MySQL. Public visitors can browse approved advertisements; guests can save a wishlist in their browser, and registered users can post listings, message and rate sellers, use an account wishlist, and manage their accounts. Administrators can review submitted advertisements.
 
 ## Requirements
 
@@ -221,3 +221,10 @@ npm test
 ```
 
 `npm test` runs the backend test suite. Run `npm run build` in `frontend` to verify the production bundle. To verify saved products end to end, sign in with two accounts, save an approved advertisement, inspect `/saved`, adjust its price or mark it sold from the seller dashboard, and verify that the buyer receives the relevant notification and sees the updated availability. Test history while signed out, sign in, and use the explicit import action to sync it. These flows require the configured MySQL database; configure SMTP to verify actual email delivery.
+### Guest shopping and seller ratings
+
+The guest navbar shows the logo, search and Sign in. Guests can save products from cards or product details and open `/saved` (also linked in the footer) without authentication. Browser saves stay separate from the signed-in account wishlist and persist on that browser; account price-drop notifications require sign-in. No automatic import of guest saves occurs at sign-in.
+
+Public seller and product pages show seller rating averages and counts. Signed-in users can submit or update one 1–5 rating per seller, and cannot rate themselves. These are community ratings, not verified-purchase reviews. The existing schema initializer creates `seller_ratings` under the startup database lock; no existing tables or ratings are deleted.
+
+Browsing without a search term uses a randomized product order with a stable seed for pagination during that visit. Explicit price/date sorts and newest-first search results remain available. Promotion payments continue to use Bachs; pending verification references stay in the URL so users can retry status checks. This does not introduce product-purchase checkout.

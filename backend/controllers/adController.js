@@ -5,7 +5,7 @@ const adModel = require('../models/adModel')
 const categoryModel = require('../models/categoryModel')
 const userModel = require('../models/userModel')
 const sellerModel = require('../models/sellerModel')
-const { buildFilters, normalizeState, sortOrders } = require('../utils/adSearch')
+const { buildFilters, normalizeState, sortOrders, randomOrder } = require('../utils/adSearch')
 const { removeProductImages, storeProductImages } = require('../utils/productImageStorage')
 
 function validationError(req) {
@@ -26,7 +26,7 @@ async function list(req, res) {
   validationError(req)
   const { page, limit, offset } = pagination(req.query)
   const { where, values } = buildFilters(req.query)
-  const orderBy = sortOrders[req.query.sort] || sortOrders.newest
+  const orderBy = req.query.sort === 'random' ? randomOrder(req.query.seed) : sortOrders[req.query.sort] || sortOrders.newest
   const [advertisements, total] = await Promise.all([
     adModel.findPublic({ where, values, orderBy, limit, offset }),
     adModel.countPublic({ where, values }),

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Heart, MapPin, Share2, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import EmptyState from '../components/EmptyState.jsx';
@@ -12,7 +12,8 @@ import { resolveImageUrl } from '../utils/imageUrl.js';
 const pageSize = 12;
 
 export default function FavouritesPage() {
-  const { refreshFavorites } = useAuth();
+  const { refreshFavorites, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [favorites, setFavorites] = useState([]);
   const [categories, setCategories] = useState([]);
   const [preferences, setPreferences] = useState({ notifyPriceDrops: true });
@@ -41,7 +42,7 @@ export default function FavouritesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, query, category, sort]);
+  }, [page, query, category, sort, isAuthenticated]);
 
   useEffect(() => { loadFavorites(); }, [loadFavorites]);
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function FavouritesPage() {
         if (active) setError(requestError.response?.data?.message || 'Could not load wishlist settings.');
       });
     return () => { active = false; };
-  }, []);
+  }, [isAuthenticated]);
 
   const remove = async (favoriteId) => {
     try {
@@ -109,6 +110,7 @@ export default function FavouritesPage() {
   };
 
   const chat = async (favorite) => {
+    if (!isAuthenticated) return navigate('/login', { state: { from: '/saved' } });
     try {
       const { data } = await startConversation(Number(favorite.advertisement_id));
       window.location.assign(`/messages?conversation=${data.conversation.id}`);
@@ -120,7 +122,7 @@ export default function FavouritesPage() {
   return (
     <div className="container section">
       <div className="section-head">
-        <div><p className="eyebrow">Your account</p><h1>Saved products</h1><p className="muted">Keep track of renewable products you want to revisit.</p></div>
+        <div><p className="eyebrow">{isAuthenticated ? 'Your account' : 'Your wishlist'}</p><h1>Saved products</h1><p className="muted">Keep track of renewable products you want to revisit.</p></div>
         {!!total && <button className="btn btn-outline" type="button" onClick={clearAll}><Trash2 size={16} /> Clear all</button>}
       </div>
       <div className="saved-toolbar">
@@ -128,7 +130,8 @@ export default function FavouritesPage() {
         <label className="field"><span>Category</span><select value={category} onChange={(event) => { setCategory(event.target.value); setPage(1); }}><option value="">All categories</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <label className="field"><span>Sort by</span><select value={sort} onChange={(event) => { setSort(event.target.value); setPage(1); }}><option value="newest">Recently saved</option><option value="price_asc">Lowest price</option><option value="price_desc">Highest price</option></select></label>
       </div>
-      <label className="saved-preference"><input type="checkbox" checked={preferences.notifyPriceDrops} onChange={togglePriceAlerts} /> Notify me when a saved product's price drops</label>
+      {!isAuthenticated && <p className="notice info">Your wishlist is saved in this browser. <Link to="/login">Sign in</Link> to use your account wishlist.</p>}
+      {isAuthenticated && <label className="saved-preference"><input type="checkbox" checked={preferences.notifyPriceDrops} onChange={togglePriceAlerts} /> Notify me when a saved product's price drops</label>}
       {notice && <p className="notice success" role="status">{notice}</p>}
       {error && <p className="notice error" role="alert">{error}</p>}
       {loading && <div className="grid">{Array.from({ length: 4 }, (_, index) => <div className="card loading-card" key={index} aria-hidden="true" />)}</div>}

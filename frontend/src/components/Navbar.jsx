@@ -121,27 +121,19 @@ export default function Navbar() {
           </div>}
         </form>
 
-        <nav className={`nav-links ${open ? 'open' : ''}`} aria-label="Main">
-          <NavLink to="/ads" onClick={() => setOpen(false)}>Browse</NavLink>
-          <NavLink to={isAuthenticated ? '/saved' : '/login'} state={!isAuthenticated ? { from: '/saved' } : undefined} onClick={() => setOpen(false)}>
-            <Heart size={16} /> Saved{isAuthenticated && favoriteCount > 0 && <span className="nav-message-count nav-favorite-count">{favoriteCount > 99 ? '99+' : favoriteCount}</span>}
-          </NavLink>
-          <NavLink to="/recently-viewed" onClick={() => setOpen(false)}><Clock3 size={16} /> Recently viewed</NavLink>
-          {isAuthenticated ? (
-            <>
-              <NavLink to="/dashboard" onClick={() => setOpen(false)}><LayoutDashboard size={16} /> Dashboard</NavLink>
-              {['admin', 'super_admin'].includes(user?.role) && <NavLink to="/admin" onClick={() => setOpen(false)}><ShieldCheck size={16} /> Admin</NavLink>}
-              <NavLink to="/profile" onClick={() => setOpen(false)}><UserAvatar src={user?.profile_image} name={user?.full_name} className="nav-user-avatar" /> {user?.full_name?.split(' ')[0] || 'Profile'}</NavLink>
-            </>
-          ) : (
-            <NavLink to="/login" onClick={() => setOpen(false)}><User size={16} /> Sign in</NavLink>
-          )}
-          <Link to="/post-ad" className="btn btn-green" onClick={() => setOpen(false)}><Plus size={16} /> Post your ad</Link>
-        </nav>
+        {isAuthenticated ? <>
+          <nav className={`nav-links ${open ? 'open' : ''}`} aria-label="Main">
+            <NavLink to="/ads" onClick={() => setOpen(false)}>Browse</NavLink>
+            <NavLink to="/saved" onClick={() => setOpen(false)}><Heart size={16} /> Saved{favoriteCount > 0 && <span className="nav-message-count nav-favorite-count">{favoriteCount > 99 ? '99+' : favoriteCount}</span>}</NavLink>
+            <NavLink to="/recently-viewed" onClick={() => setOpen(false)}><Clock3 size={16} /> Recently viewed</NavLink>
+            <NavLink to="/dashboard" onClick={() => setOpen(false)}><LayoutDashboard size={16} /> Dashboard</NavLink>
+            {['admin', 'super_admin'].includes(user?.role) && <NavLink to="/admin" onClick={() => setOpen(false)}><ShieldCheck size={16} /> Admin</NavLink>}
+            <NavLink to="/profile" onClick={() => setOpen(false)}><UserAvatar src={user?.profile_image} name={user?.full_name} className="nav-user-avatar" /> {user?.full_name?.split(' ')[0] || 'Profile'}</NavLink>
+            <Link to="/post-ad" className="btn btn-green" onClick={() => setOpen(false)}><Plus size={16} /> Post your ad</Link>
+          </nav>
+          <button className="burger" onClick={() => setOpen(!open)} aria-label="Toggle menu" aria-expanded={open}>{open ? <X size={22} /> : <Menu size={22} />}</button>
+        </> : <Link className="btn btn-white guest-sign-in" to="/login"><User size={16} /> Sign in</Link>}
 
-        <button className="burger" onClick={() => setOpen(!open)} aria-label="Toggle menu" aria-expanded={open}>
-          {open ? <X size={22} /> : <Menu size={22} />}
-        </button>
       </div>
     </header>
   );

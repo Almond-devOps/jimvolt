@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { MapPin, Heart } from 'lucide-react';
 import { CATEGORIES, FALLBACK_CATEGORY_IMAGE } from '../utils/constants.js';
 import { formatNaira, timeAgo } from '../utils/format.js';
@@ -14,9 +14,8 @@ export default function ProductCard({ ad, initiallySaved = false, onUnsave }) {
   const cardRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const { isAuthenticated, favoriteIds, favoritesLoaded, setFavorite } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [saveNotice, setSaveNotice] = useState(false);
+  const { favoriteIds, favoritesLoaded, setFavorite } = useAuth();
   const categorySlug = ad.category?.slug || ad.category_slug;
   const category = CATEGORIES.find((item) => item.slug === categorySlug);
   const categoryImage = category?.image || FALLBACK_CATEGORY_IMAGE;
@@ -49,10 +48,6 @@ export default function ProductCard({ ad, initiallySaved = false, onUnsave }) {
   const toggleSaved = async (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: `${location.pathname}${location.search}` } });
-      return;
-    }
     if (saving) return;
     setSaving(true);
     setSaveError('');
@@ -60,10 +55,12 @@ export default function ProductCard({ ad, initiallySaved = false, onUnsave }) {
       if (saved) {
         await removeFavourite(ad.id);
         setFavorite(ad.id, false);
+        setSaveNotice(false);
         onUnsave?.(ad.id);
       } else {
-        await addFavourite(ad.id);
+        await addFavourite(ad.id, ad);
         setFavorite(ad.id, true);
+        setSaveNotice(true);
       }
     } catch (error) {
       setSaveError(error.response?.data?.message || 'Could not update saved products.');
@@ -91,11 +88,12 @@ export default function ProductCard({ ad, initiallySaved = false, onUnsave }) {
       <div className="card-body">
         <p className="card-price">{formatNaira(ad.price)}</p>
         <h3 className="card-title"><Link to={`/ads/${ad.id}`} onClick={trackClick}>{ad.title}</Link></h3>
-        <p className="card-meta"><MapPin size={14} aria-hidden="true" /> {ad.city}, {ad.state}</p>
+        <p className="card-meta"><MapPin size={14} aria-hidden="true" /><span>{ad.city}, {ad.state}</span></p>
         <p className="card-foot">
-          <span className="seller">{sellerName} <VerifiedBusinessBadge verified={Boolean(ad.seller?.is_verified || ad.verified)} /></span>
+          <span className="seller"><span className="card-seller-name">{sellerName}</span><VerifiedBusinessBadge verified={Boolean(ad.seller?.is_verified || ad.verified)} /></span>
           <time dateTime={postedAt}>{timeAgo(postedAt)}</time>
         </p>
+        {saveNotice && <p className="card-save-notice" role="status">Saved. <Link to="/saved">View wishlist</Link></p>}
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
       </div>
     </article>

@@ -9,6 +9,7 @@ import { formatNaira, timeAgo } from '../utils/format.js';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
 import UserAvatar from '../components/UserAvatar.jsx';
+import SellerRating from '../components/SellerRating.jsx';
 
 export default function AdDetailPage() {
   const { id } = useParams();
@@ -51,14 +52,13 @@ export default function AdDetailPage() {
   }, [favoriteIds, favoritesLoaded, id]);
 
   const toggleSaved = async () => {
-    if (!isAuthenticated) return navigate('/login', { state: { from: `/ads/${id}` } });
     try {
       if (saved) {
         await removeFavourite(id);
         setSaved(false);
         setFavorite(id, false);
       } else {
-        await addFavourite(id);
+        await addFavourite(id, advertisement);
         setSaved(true);
         setFavorite(id, true);
       }
@@ -139,6 +139,7 @@ export default function AdDetailPage() {
               <UserAvatar src={seller.profileImage} name={seller.name} className="avatar" />
               <div><strong>{seller.name || 'Seller'}</strong><p className="muted">{seller.is_verified ? <VerifiedBusinessBadge verified /> : 'Jimvolt marketplace seller'}</p></div>
             </div>
+            <SellerRating sellerId={seller.id} />
             <p className="seller-trust"><ShieldCheck size={16} /> Keep conversations on Jimvolt and inspect items before payment.</p>
             <button type="button" className="btn btn-primary full-width" onClick={chatWithSeller} disabled={openingChat}>
               <MessageCircle size={17} /> {openingChat ? 'Opening chat...' : 'Chat with Seller'}

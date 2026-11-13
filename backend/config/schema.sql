@@ -422,3 +422,15 @@ CREATE TABLE IF NOT EXISTS category_subcategories (
   CONSTRAINT fk_category_subcategories_child FOREIGN KEY (subcategory_id) REFERENCES categories (id) ON DELETE CASCADE,
   CONSTRAINT chk_category_not_own_parent CHECK (category_id != subcategory_id)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS seller_ratings (
+  seller_id BIGINT UNSIGNED NOT NULL,
+  reviewer_id BIGINT UNSIGNED NOT NULL,
+  score TINYINT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (seller_id, reviewer_id),
+  CONSTRAINT fk_rating_seller FOREIGN KEY (seller_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_rating_reviewer FOREIGN KEY (reviewer_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT chk_rating_score CHECK (score BETWEEN 1 AND 5)
+) ENGINE=InnoDB;

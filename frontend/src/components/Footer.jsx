@@ -17,6 +17,7 @@ export default function Footer() {
           <h4>Jimvolt</h4>
           <ul>
             <li><Link to="/post-ad">Post your ad</Link></li>
+            <li><Link to="/saved">Wishlist</Link></li>
             <li><Link to="/sellers">Verified sellers</Link></li>
             <li><Link to="/safety">Safety tips</Link></li>
             <li><Link to="/contact">Contact us</Link></li>
