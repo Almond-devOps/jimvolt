@@ -22,9 +22,14 @@ const enabled = process.env.JIMVOLT_TEST_POSTGRES === '1'
 
 test('copies every table, converts types, keeps ids and moves the sequences', { skip: !enabled && 'set JIMVOLT_TEST_POSTGRES=1 and DB_* to run' }, async (t) => {
   const { Client } = require('pg')
+  // Remote databases (Aiven) require TLS with the project CA, exactly like config/database.js.
+  const caSetting = process.env.DB_SSL_CA?.trim()
+  const ssl = caSetting
+    ? { ca: fs.readFileSync(path.resolve(__dirname, '..', caSetting), 'utf8'), rejectUnauthorized: true }
+    : undefined
   const connection = (database) => ({
     host: process.env.DB_HOST, port: Number(process.env.DB_PORT || 5432), user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD, database,
+    password: process.env.DB_PASSWORD, database, ...(ssl ? { ssl } : {}),
   })
   const databaseName = `${process.env.DB_NAME}_migration_${Date.now()}`
   const admin = new Client(connection(process.env.DB_NAME))

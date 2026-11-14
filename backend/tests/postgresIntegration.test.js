@@ -27,17 +27,18 @@ test('Jimvolt API runs on PostgreSQL', { skip: !enabled && 'set JIMVOLT_TEST_POS
     await pool.execute(`DELETE FROM seller_slug_history WHERE user_id IN (${testUsers})`)
     await pool.execute("DELETE FROM users WHERE password = 'x' AND email LIKE '%@example.com'")
   }
-  await removeTestRows()
   t.after(async () => {
     server.closeAllConnections()
     await new Promise((resolve) => server.close(resolve))
-    await removeTestRows()
+    await removeTestRows().catch(() => {})
     await pool.end()
   })
 
-  // Wait for startup (connect + schema + categories) through the health endpoint.
+  // The first request runs startup (connect + schema + categories). Wait for it before touching
+  // any table, so this also works on a brand-new, empty database.
   const health = await fetch(`${base}/api/health`)
   assert.equal(health.status, 200)
+  await removeTestRows()
 
   const suffix = Date.now()
   const insertUser = async (name, role = 'user') => {
