@@ -293,7 +293,7 @@ test('Jimvolt API runs on PostgreSQL', { skip: !enabled && 'set JIMVOLT_TEST_POS
     await ok('GET', '/api/admin/audit-logs', { as: adminId })
   })
 
-  await t.test('accounts: register, login, password and email flows', async () => {
+  await t.test('accounts: register, login, password and email flows', async (sub) => {
     const userModel = require('../models/userModel')
     const email = `newbie${suffix}@example.com`
     const phone = `0803${String(suffix).slice(-7)}`
@@ -301,6 +301,8 @@ test('Jimvolt API runs on PostgreSQL', { skip: !enabled && 'set JIMVOLT_TEST_POS
     assert.equal(registered.status, 201, JSON.stringify(registered.body))
     const userId = registered.body.user.id
     assert.ok(userId > 0)
+    // This account's password and email are changed below, so the marker-based cleanup would miss it.
+    sub.after(() => pool.execute('DELETE FROM users WHERE id = ?', [userId]))
     const duplicate = await call('POST', '/api/auth/register', { body: { fullName: 'New Person', email: email.toUpperCase(), phone, password: 'Password123!', confirmPassword: 'Password123!' } })
     assert.equal(duplicate.status, 409, 'a differently-cased email must count as a duplicate')
 
