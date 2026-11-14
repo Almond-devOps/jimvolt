@@ -28,7 +28,8 @@ export default function ShareProfileDialog({ profile, onClose }) {
   const [isCopied, setIsCopied] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
-  const profileUrl = getPublicProfileUrl(profile.id, window.location.origin);
+  // Prefer the seller's public slug for the shareable URL; fall back to numeric ID
+  const profileUrl = getPublicProfileUrl(profile.username || profile.public_slug || profile.id, window.location.origin);
   const socialUrls = getSocialShareUrls(profileUrl, profile.full_name);
   const canShareNatively = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 

@@ -2,7 +2,7 @@ const { pool } = require('../config/database')
 
 const publicFields = `
   id, full_name, email, phone, role, profile_image, token_version,
-  account_status,
+  account_status, username,
   (SELECT sv.status = 'verified' FROM seller_verifications sv
    WHERE sv.user_id = users.id ORDER BY sv.id DESC LIMIT 1) AS is_verified,
   created_at,

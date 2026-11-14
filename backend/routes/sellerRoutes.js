@@ -6,6 +6,35 @@ const sellerController = require('../controllers/sellerController')
 const { parseVerificationUpload } = require('../middleware/verificationUpload')
 
 const router = express.Router()
+
+// Public slug routes – no authentication required
+router.get(
+  '/public/slug/:slug',
+  param('slug').matches(/^[a-z0-9][a-z0-9-]{1,47}$/i),
+  asyncHandler(sellerController.publicProfileBySlug),
+)
+router.get(
+  '/public/:slug',
+  param('slug').matches(/^[a-z0-9-]{1,180}$/),
+  asyncHandler(sellerController.publicProfile),
+)
+
+router.use(authenticate)
+
+// Username availability check
+router.get(
+  '/username/check',
+  query('username').trim().isLength({ min: 3, max: 48 }),
+  asyncHandler(sellerController.checkUsername),
+)
+
+// Update username / public slug
+router.put(
+  '/username',
+  body('username').trim().isLength({ min: 3, max: 48 }).withMessage('Username must be between 3 and 48 characters.'),
+  asyncHandler(sellerController.updateUsername),
+)
+
 const verificationFields = [
   body('verificationType').isIn(['individual', 'registered_business', 'renewable_energy_company']),
   body('businessName').trim().isLength({ min: 2, max: 160 }),
@@ -21,9 +50,6 @@ const verificationFields = [
   body('website').optional({ values: 'falsy' }).isURL({ protocols: ['http', 'https'], require_protocol: true }).isLength({ max: 2048 }),
   body('businessCategoryId').optional({ values: 'falsy' }).isInt({ min: 1 }),
 ]
-
-router.get('/public/:slug', param('slug').matches(/^[a-z0-9-]{1,180}$/), asyncHandler(sellerController.publicProfile))
-router.use(authenticate)
 
 router.get('/dashboard', asyncHandler(sellerController.dashboard))
 router.get('/ads',

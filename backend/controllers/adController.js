@@ -62,7 +62,9 @@ async function getSeller(req, res) {
   if (!seller) return res.status(404).json({ message: 'Seller not found.' })
   const advertisements = await adModel.findPublicBySeller(req.params.id)
   const businessProfile = await sellerModel.getPublicProfileByUserId(req.params.id)
-  return res.json({ seller: { ...seller, businessProfile }, advertisements })
+  // Include the public slug so the frontend can redirect to /@:slug
+  const publicSlug = await sellerModel.getPublicSlugByUserId(req.params.id)
+  return res.json({ seller: { ...seller, businessProfile, publicSlug }, advertisements })
 }
 
 async function getById(req, res) {

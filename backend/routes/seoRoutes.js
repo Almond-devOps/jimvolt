@@ -292,10 +292,74 @@ async function renderPublicPage(req, res, next) {
     return sendRendered(res, template, page)
   }
 
+  const slugMatch = pathname.match(/^\/@([a-z0-9][a-z0-9-]{1,47})$/i)
+  if (slugMatch) {
+    const slug = slugMatch[1].toLowerCase()
+    const seller = await sellerModel.getPublicProfileBySlug(slug)
+    if (!seller) return next()
+    // If this is an old slug, serve a redirect page so bots follow it
+    if (seller.isHistorical) {
+      const newCanonical = new URL(`/@${seller.public_slug}`, siteUrl).href
+      res.set('Location', newCanonical)
+      return res.status(301).end()
+    }
+    const advertisements = await adModel.findPublicBySeller(seller.seller_id)
+    const canonical = new URL(`/@${seller.public_slug}`, siteUrl).href
+    const title = `${seller.business_name} | Solar Energy Seller in ${seller.state || 'Nigeria'} | Jimvolt`
+    const description = plainText(
+      seller.description || `${seller.business_name} offers renewable energy products and services on Jimvolt.`
+    ).slice(0, 300)
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': seller.is_verified && seller.address ? 'LocalBusiness' : 'Organization',
+      name: seller.business_name,
+      url: canonical,
+      description,
+    }
+    if (seller.logo_url) schema.image = seller.logo_url
+    if (seller.address) {
+      schema.address = {
+        '@type': 'PostalAddress',
+        streetAddress: seller.address,
+        addressLocality: seller.city || undefined,
+        addressRegion: seller.state || undefined,
+        addressCountry: 'NG',
+      }
+    }
+    const listItems = advertisements
+      .map((ad) => `<li><a href="${escapeHtml(advertisementPath(ad))}">${escapeHtml(ad.title)}</a> — ₦${escapeHtml(Number(ad.price).toLocaleString('en-NG'))}</li>`)
+      .join('')
+    const body = `<main>
+      <nav aria-label="Breadcrumb"><a href="/">Home</a> &gt; <a href="/sellers">Sellers</a> &gt; ${escapeHtml(seller.business_name)}</nav>
+      <h1>${escapeHtml(seller.business_name)}</h1>
+      ${seller.city || seller.state ? `<p>${escapeHtml([seller.city, seller.state].filter(Boolean).join(', '))}</p>` : ''}
+      <p>${escapeHtml(description)}</p>
+      <h2>Approved advertisements</h2>
+      <ul>${listItems}</ul>
+    </main>`
+    const page = renderContent(template, {
+      metadata: { title, description, canonical, image: seller.logo_url },
+      structuredData: [schema, breadcrumbSchema(siteUrl, [
+        { name: 'Home', path: '/' },
+        { name: 'Sellers', path: '/sellers' },
+        { name: seller.business_name, path: `/@${seller.public_slug}` },
+      ])],
+    })
+    page.html = page.html.replace('<div id="root"></div>', `<div id="root">${body}</div>`)
+    return sendRendered(res, template, page)
+  }
+
   const sellerMatch = pathname.match(/^\/sellers\/(\d+)$/)
   if (sellerMatch) {
     const seller = await userModel.findPublicSeller(sellerMatch[1])
     if (!seller) return next()
+    // Redirect to the slug-based URL when the seller has a public slug
+    const slugRow = await sellerModel.getSlugForUserId(sellerMatch[1])
+    if (slugRow?.public_slug) {
+      const newCanonical = new URL(`/@${slugRow.public_slug}`, siteUrl).href
+      res.set('Location', newCanonical)
+      return res.status(301).end()
+    }
     const advertisements = await adModel.findPublicBySeller(seller.id)
     const canonical = new URL(`/sellers/${seller.id}`, siteUrl).href
     const description = `${seller.name} is a ${seller.isVerified ? 'verified ' : ''}renewable energy seller on Jimvolt with ${advertisements.length} approved advertisements.`

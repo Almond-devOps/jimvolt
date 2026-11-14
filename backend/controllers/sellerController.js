@@ -5,6 +5,7 @@ const adModel = require('../models/adModel')
 const categoryModel = require('../models/categoryModel')
 const sellerModel = require('../models/sellerModel')
 const { isValidNigerianPhone, normalizeNigerianPhone } = require('../utils/phone')
+const { normalizeUsername, validateUsername } = require('../utils/slugUtils')
 const { privateDirectory } = require('../middleware/verificationUpload')
 
 function checkValidation(req) {
@@ -116,6 +117,63 @@ async function publicProfile(req, res) {
   }
   const advertisements = await adModel.findPublicBySeller(seller.seller_id)
   return res.json({ seller, advertisements })
+}
+
+async function publicProfileBySlug(req, res) {
+  const slug = req.params.slug.toLowerCase()
+  const seller = await sellerModel.getPublicProfileBySlug(slug)
+  if (!seller) {
+    const error = new Error('Seller profile not found.')
+    error.statusCode = 404
+    throw error
+  }
+  // Redirect to the current slug when the caller used an old one
+  if (seller.isHistorical) {
+    return res.status(301).json({
+      redirect: `/@${seller.public_slug}`,
+      slug: seller.public_slug,
+    })
+  }
+  const advertisements = await adModel.findPublicBySeller(seller.seller_id)
+  return res.json({ seller, advertisements })
+}
+
+async function checkUsername(req, res) {
+  const raw = String(req.query.username || '').trim()
+  const normalized = normalizeUsername(raw)
+  const validationError = validateUsername(normalized)
+  if (validationError) {
+    return res.json({ available: false, reason: validationError })
+  }
+  const available = await sellerModel.isSlugAvailable(normalized, req.user?.id || null)
+  return res.json({ available, slug: normalized })
+}
+
+async function updateUsername(req, res) {
+  checkValidation(req)
+  const raw = String(req.body.username || '').trim()
+  const normalized = normalizeUsername(raw)
+  const validationError = validateUsername(normalized)
+  if (validationError) {
+    const error = new Error(validationError)
+    error.statusCode = 400
+    throw error
+  }
+  const result = await sellerModel.updatePublicSlug(req.user.id, normalized)
+  if (result === 'unavailable') {
+    const error = new Error('That username is already taken. Please choose a different one.')
+    error.statusCode = 409
+    throw error
+  }
+  if (result === 'same') {
+    return res.json({ message: 'Your username is already set to that value.', slug: normalized })
+  }
+  if (result === 'no_profile') {
+    const error = new Error('You need a seller profile before setting a username. Complete your verification first.')
+    error.statusCode = 400
+    throw error
+  }
+  return res.json({ message: 'Username updated.', slug: normalized })
 }
 
 async function submitVerification(req, res) {
@@ -278,14 +336,17 @@ async function duplicateAdvertisement(req, res) {
 module.exports = {
   advertisements,
   analytics,
+  checkUsername,
   dashboard,
   dateRange,
   duplicateAdvertisement,
   markNotificationRead,
   notifications,
   publicProfile,
+  publicProfileBySlug,
   setAdvertisementStatus,
   submitVerification,
+  updateUsername,
   updateVerification,
   uploadVerificationDocuments,
   verification,

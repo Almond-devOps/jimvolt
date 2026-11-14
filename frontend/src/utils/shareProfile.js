@@ -1,13 +1,26 @@
-export function getPublicProfileUrl(profileId, origin) {
-  if ((typeof profileId !== 'string' && typeof profileId !== 'number') || !String(profileId).trim()) {
-    throw new TypeError('A profile ID is required to build the public profile URL.');
+/**
+ * Builds the public profile URL for a seller.
+ *
+ * Pass the seller's slug (e.g. 'solarpowerng') to produce
+ * `https://jimvolt-frontend-dev.vercel.app/@solarpowerng`.
+ *
+ * Passing a numeric string falls back to the legacy path /sellers/:id
+ * so old call-sites keep working until they migrate.
+ */
+export function getPublicProfileUrl(slugOrId, origin) {
+  if ((typeof slugOrId !== 'string' && typeof slugOrId !== 'number') || !String(slugOrId).trim()) {
+    throw new TypeError('A slug or profile ID is required to build the public profile URL.');
   }
   if (typeof origin !== 'string' || !origin.trim()) {
     throw new TypeError('A site origin is required to build the public profile URL.');
   }
-
   const baseUrl = origin.replace(/\/$/, '');
-  return `${baseUrl}/sellers/${encodeURIComponent(String(profileId))}`;
+  const value = String(slugOrId).trim();
+  // Pure numeric value → legacy /sellers/:id path
+  if (/^\d+$/.test(value)) {
+    return `${baseUrl}/sellers/${encodeURIComponent(value)}`;
+  }
+  return `${baseUrl}/@${encodeURIComponent(value)}`;
 }
 
 export function getSocialShareUrls(profileUrl, displayName) {

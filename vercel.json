@@ -41,6 +41,10 @@
       "dest": "backend/api/index.js"
     },
     {
+      "src": "/@([a-zA-Z0-9][a-zA-Z0-9-]{1,47})$",
+      "dest": "backend/api/index.js"
+    },
+    {
       "src": "/category/(.*)",
       "dest": "backend/api/index.js"
     },
