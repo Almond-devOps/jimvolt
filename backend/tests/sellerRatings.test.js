@@ -59,7 +59,7 @@ test('re-rating updates the existing seller/reviewer pair and reads numeric aggr
   }
   try {
     assert.deepEqual(await ratings.save(7, 42, 5), { average: 4.5, count: 2, mine: 5 })
-    assert.match(calls[0].sql, /ON DUPLICATE KEY UPDATE/)
+    assert.match(calls[0].sql, /ON CONFLICT \(seller_id, reviewer_id\) DO UPDATE/)
     assert.deepEqual(calls[0].params, [7, 42, 5])
   } finally { pool.execute = original }
 })

@@ -36,10 +36,10 @@ test('seller advertisement search includes keywords, category and location witho
       userId: 42, status: null, search: 'solar', sortBy: 'newest', limit: 20, offset: 0,
     })
     await adModel.countOwnedAds({ userId: 42, status: null, search: 'solar' })
-    assert.match(statements[0].sql, /c\.name LIKE \? OR a\.state LIKE \? OR a\.city LIKE \?/)
+    assert.match(statements[0].sql, /c\.name ILIKE \? OR a\.state ILIKE \? OR a\.city ILIKE \?/)
     assert.match(statements[0].sql, /a\.user_id = \?/)
     assert.deepEqual(statements[0].params, [42, ...Array(6).fill('%solar%'), 20, 0])
-    assert.match(statements[1].sql, /category_id IN \(SELECT id FROM categories WHERE name LIKE \?\)/)
+    assert.match(statements[1].sql, /category_id IN \(SELECT id FROM categories WHERE name ILIKE \?\)/)
     assert.deepEqual(statements[1].params, [42, ...Array(6).fill('%solar%')])
   } finally {
     pool.execute = originalExecute
@@ -51,8 +51,8 @@ test('seller analytics aggregate only owned listings and map real activity count
   const queries = []
   pool.execute = async (sql, params = []) => {
     queries.push({ sql, params })
-    if (sql.includes('DATE_FORMAT(aa.occurred_at')) return [[{ day: '2026-01-02', total: '4' }]]
-    if (sql.includes('DATE_FORMAT(m.created_at')) return [[{ day: '2026-01-03', total: '2' }]]
+    if (sql.includes('to_char(aa.occurred_at')) return [[{ day: '2026-01-02', total: '4' }]]
+    if (sql.includes('to_char(m.created_at')) return [[{ day: '2026-01-03', total: '2' }]]
     if (sql.includes('COUNT(*) AS total_ads')) {
       return [[{ total_ads: '3', active_ads: '1', pending_ads: '1', rejected_ads: '1', total_views: '24' }]]
     }

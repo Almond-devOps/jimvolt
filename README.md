@@ -1,27 +1,48 @@
 # Jimvolt Renewable Energy Marketplace
 
-Jimvolt is a React marketplace for renewable-energy products and services, backed by an Express API and MySQL. Public visitors can browse approved advertisements; guests can save a wishlist in their browser, and registered users can post listings, message and rate sellers, use an account wishlist, and manage their accounts. Administrators can review submitted advertisements.
+Jimvolt is a React marketplace for renewable-energy products and services, backed by an Express API and PostgreSQL. Public visitors can browse approved advertisements; guests can save a wishlist in their browser, and registered users can post listings, message and rate sellers, use an account wishlist, and manage their accounts. Administrators can review submitted advertisements.
 
 ## Requirements
 
 - Node.js 22 or newer
-- MySQL 8 or compatible
+- PostgreSQL 14 or newer (Aiven for PostgreSQL works, and so does any local install)
 
 ## Database setup
 
-Create the schema with `backend/config/schema.sql` in MySQL. The API seeds the renewable-energy categories at startup and adds supported account columns/indexes to existing `users` tables without deleting user records.
+The API creates its tables itself at startup from `backend/config/schema.sql`. Every statement is idempotent (`CREATE ... IF NOT EXISTS`), so existing tables and rows are never dropped or rewritten, and the file is only re-applied when its contents change. The API also seeds the renewable-energy categories and promotion packages. The schema uses the `citext` extension for case-insensitive emails, usernames and slugs, so the database user needs permission to create it (Aiven's default `avnadmin` user can).
 
-Use a dedicated application account instead of `root`. As a MySQL administrator, create the database and application user (choose a unique password):
+Use a dedicated application account instead of a superuser such as `postgres`. For a local database, as an administrator:
 
 ```sql
-CREATE DATABASE IF NOT EXISTS jimvolt_db
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS 'jimvolt_user'@'localhost' IDENTIFIED BY 'choose-a-unique-password';
-GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES
-  ON jimvolt_db.* TO 'jimvolt_user'@'localhost';
+CREATE USER jimvolt_user WITH PASSWORD 'choose-a-unique-password';
+CREATE DATABASE jimvolt_db OWNER jimvolt_user;
 ```
 
-Apply `backend/config/schema.sql` as the MySQL administrator if you want to initialize tables manually; alternatively, the API creates only missing tables using idempotent `CREATE TABLE IF NOT EXISTS` statements at startup. Existing tables and records are not dropped or recreated.
+You can also apply `backend/config/schema.sql` yourself with `psql -f backend/config/schema.sql`.
+
+### Aiven for PostgreSQL
+
+1. Create an Aiven for PostgreSQL service and copy its host, port, user, password and database name from the service overview.
+2. Download the CA certificate from the service page, save it as `backend/certs/ca.pem`, and set `DB_SSL_CA=certs/ca.pem`. Remote databases require it.
+3. On Vercel, create a **connection pool** in the Aiven console (Pools tab) and use the pool's port and database name for `DB_PORT` and `DB_NAME`. PgBouncer shares a small number of real connections between all serverless instances, which prevents "too many connections" errors. Pool mode `transaction` is supported.
+4. Each Vercel instance opens at most 2 connections by default; set `DB_CONNECTION_LIMIT` to change that.
+
+### Moving existing MySQL data to PostgreSQL
+
+`backend/scripts/migrateMysqlToPostgres.js` copies every table from the old MySQL database in one transaction (a failure leaves PostgreSQL untouched), converts booleans, JSON and zero dates, keeps the original ids, moves the id sequences, and checks that every row count matches. It only reads from MySQL and refuses to run on a PostgreSQL database that already has data.
+
+```bash
+cd backend
+npm install --no-save mysql2           # the one-off script needs the MySQL driver
+# Add the PostgreSQL settings (DB_*) and the old MySQL settings to backend/.env:
+#   SOURCE_DB_HOST, SOURCE_DB_PORT, SOURCE_DB_USER, SOURCE_DB_PASSWORD, SOURCE_DB_NAME,
+#   SOURCE_DB_SSL_CA (path to the Aiven MySQL CA), SOURCE_DB_TIMEZONE (default Z, meaning UTC)
+node -e "require('./config/database').ensureCoreSchema().then(() => process.exit(0))"  # create the tables
+node scripts/migrateMysqlToPostgres.js --dry-run   # counts rows in MySQL
+node scripts/migrateMysqlToPostgres.js             # copies the data
+```
+
+Stop writes to the old site first (maintenance mode or a paused deployment) so nothing is added during the copy, then point the deployment's `DB_*` variables at PostgreSQL. Keep the MySQL database until you have checked the new site.
 
 Configure `backend/.env`:
 
@@ -30,11 +51,12 @@ PORT=5000
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=replace-with-a-random-secret-at-least-32-characters-long
 DB_HOST=localhost
-DB_PORT=3306
+DB_PORT=5432
 DB_NAME=jimvolt_db
 DB_USER=jimvolt_user
 DB_PASSWORD=your-application-user-password
-JWT_SECRET=
+# DB_SSL_CA=certs/ca.pem        # required for any non-local database (Aiven)
+# DB_CONNECTION_LIMIT=2         # per instance; defaults to 2 on Vercel and 10 elsewhere
 
 # Optional SMTP settings for real password-reset and email-verification messages.
 EMAIL_HOST=
@@ -82,7 +104,7 @@ Import the repository as a Vercel project with the repository root as its Root D
 
 Configure these values in Vercel's project Environment Variables for each environment you deploy:
 
-- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` (`jimvolt_db`). Use a managed MySQL server reachable from Vercel, not `localhost` or the database root account.
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME` (`jimvolt_db`). Use a managed PostgreSQL server reachable from Vercel (for Aiven, the connection pool port, with `DB_SSL_CA` set), not `localhost` or a superuser account.
 - `JWT_SECRET` (at least 32 characters), `FRONTEND_URL`, and `PUBLIC_SITE_URL` using your deployed site URL. Vercel's deployment and production domains are also allowed automatically by the API CORS policy.
 - `BACHS_API_KEY` and `BACHS_WEBHOOK_SECRET` to enable Bachs promotion checkout and verified webhooks. Use sandbox credentials during testing and keep provider secrets server-side.
 - Configure `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, and `EMAIL_FROM` to send account emails.
@@ -115,7 +137,7 @@ Local profile image storage requires durable backend storage in production. Verc
 - `/ads` — searchable, filterable advertisements
 - `/ads/:id` — product details and seller contact
 - `/post-ad` — submit an advertisement for moderation
-- `/dashboard` — user advertisements and MySQL-backed statistics
+- `/dashboard` — user advertisements and database-backed statistics
 - `/saved`, `/favourites`, `/recently-viewed`, and `/messages` — saved products, browsing history, and messaging
 - `/profile` and `/account-settings` — profile and account management
 - `/admin` — administrator advertisement review
@@ -141,7 +163,7 @@ cd backend
 npm run create-super-admin
 ```
 
-The command asks for the administrator's name, email, Nigerian phone number, and password. It validates the details, hashes the password with bcrypt, rejects duplicate email or phone accounts, and creates the user in the existing MySQL `users` table. Keep administrator credentials out of command-line arguments and source control.
+The command asks for the administrator's name, email, Nigerian phone number, and password. It validates the details, hashes the password with bcrypt, rejects duplicate email or phone accounts, and creates the user in the existing `users` table. Keep administrator credentials out of command-line arguments and source control.
 
 ## Admin API surface
 
@@ -185,7 +207,7 @@ After creation, sign in at `/admin/login`. Do not put an administrator password 
 
 ## Messaging setup
 
-The messaging system uses the existing MySQL connection and JWT authentication. Socket.IO runs on the same backend HTTP server and authenticates each connection with the current Jimvolt bearer token. For image attachments, configure Cloudinary in `backend/.env`:
+The messaging system uses the existing database connection and JWT authentication. Socket.IO runs on the same backend HTTP server and authenticates each connection with the current Jimvolt bearer token. For image attachments, configure Cloudinary in `backend/.env`:
 
 ```env
 CLOUDINARY_CLOUD_NAME=your-cloud-name
@@ -220,7 +242,7 @@ cd backend
 npm test
 ```
 
-`npm test` runs the backend test suite. Run `npm run build` in `frontend` to verify the production bundle. To verify saved products end to end, sign in with two accounts, save an approved advertisement, inspect `/saved`, adjust its price or mark it sold from the seller dashboard, and verify that the buyer receives the relevant notification and sees the updated availability. Test history while signed out, sign in, and use the explicit import action to sync it. These flows require the configured MySQL database; configure SMTP to verify actual email delivery.
+`npm test` runs the backend test suite. Run `npm run build` in `frontend` to verify the production bundle. To verify saved products end to end, sign in with two accounts, save an approved advertisement, inspect `/saved`, adjust its price or mark it sold from the seller dashboard, and verify that the buyer receives the relevant notification and sees the updated availability. Test history while signed out, sign in, and use the explicit import action to sync it. These flows require the configured PostgreSQL database; configure SMTP to verify actual email delivery.
 ### Guest shopping and seller ratings
 
 The guest navbar shows the logo, search and Sign in. Guests can save products from cards or product details and open `/saved` (also linked in the footer) without authentication. Browser saves stay separate from the signed-in account wishlist and persist on that browser; account price-drop notifications require sign-in. No automatic import of guest saves occurs at sign-in.

@@ -97,23 +97,16 @@ async function createSuperAdmin(input) {
   try {
     await connectDB()
 
-    const [columns] = await pool.query('SHOW COLUMNS FROM users')
-    const columnNames = new Set(columns.map((column) => column.Field))
+    const [columns] = await pool.query(
+      "SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'users'",
+    )
+    const columnNames = new Set(columns.map((column) => column.column_name))
     for (const requiredColumn of ['full_name', 'email', 'phone', 'password', 'role']) {
       if (!columnNames.has(requiredColumn)) {
         throw new Error(`The existing users table is missing the required "${requiredColumn}" column.`)
       }
     }
-
-    const roleColumn = columns.find((column) => column.Field === 'role')
-    if (!roleColumn.Type.includes("'super_admin'")) {
-      if (!/^enum\('user','admin'\)$/i.test(roleColumn.Type.replace(/\s/g, ''))) {
-        throw new Error('The users.role column has an unsupported definition; refusing to alter it automatically.')
-      }
-      await pool.query(
-        "ALTER TABLE users MODIFY role ENUM('user', 'admin', 'super_admin') NOT NULL DEFAULT 'user'",
-      )
-    }
+    // The schema's CHECK constraint on users.role already allows 'super_admin'.
 
     const [existing] = await pool.execute(
       'SELECT id FROM users WHERE email = ? OR phone = ? LIMIT 1',

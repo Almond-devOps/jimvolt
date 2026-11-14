@@ -65,7 +65,7 @@ async function listFavorites(userId, { q = '', category, sort = 'newest', page =
   const where = ['f.user_id = ?']
   const values = [userId]
   if (q) {
-    where.push('(COALESCE(a.title, f.saved_title) LIKE ? OR COALESCE(u.full_name, f.saved_seller_name) LIKE ?)')
+    where.push('(COALESCE(a.title, f.saved_title) ILIKE ? OR COALESCE(u.full_name, f.saved_seller_name) ILIKE ?)')
     values.push(`%${q}%`, `%${q}%`)
   }
   if (category) {
@@ -156,7 +156,7 @@ async function trackView(userId, advertisementId) {
   const [result] = await pool.execute(
     `INSERT INTO recently_viewed (user_id, advertisement_id, viewed_at)
      VALUES (?, ?, CURRENT_TIMESTAMP)
-     ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP`,
+     ON CONFLICT (user_id, advertisement_id) DO UPDATE SET viewed_at = CURRENT_TIMESTAMP`,
     [userId, advertisementId],
   )
   return result.affectedRows > 0
@@ -231,7 +231,7 @@ async function getPreferences(userId) {
 async function setPreferences(userId, notifyPriceDrops) {
   await pool.execute(
     `INSERT INTO wishlist_preferences (user_id, notify_price_drops)
-     VALUES (?, ?) ON DUPLICATE KEY UPDATE notify_price_drops = VALUES(notify_price_drops)`,
+     VALUES (?, ?) ON CONFLICT (user_id) DO UPDATE SET notify_price_drops = EXCLUDED.notify_price_drops`,
     [userId, notifyPriceDrops],
   )
   return { notifyPriceDrops: Boolean(notifyPriceDrops) }

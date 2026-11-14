@@ -2,115 +2,79 @@ const assert = require('node:assert/strict')
 const test = require('node:test')
 const { withSchemaLock } = require('../utils/schemaLock')
 
-test('concurrent initializers wait for the database lock and use the owning session', async () => {
-  let tail = Promise.resolve()
-  let active = 0
-  const names = []
-  const connections = []
-  const pool = {
-    async getConnection() {
-      let unlock
-      const connection = {
-        async query(sql, params) {
-          if (sql.includes('GET_LOCK')) {
-            names.push(params[0])
-            const previous = tail
-            tail = new Promise((resolve) => { unlock = resolve })
-            await previous
-            connection.locked = true
-            return [[{ acquired: 1 }]]
-          }
-          assert.ok(connection.locked)
-          connection.locked = false
-          unlock()
-          return [[{ released: 1 }]]
-        },
-        release() { assert.equal(connection.locked, false); connection.returned = true },
-      }
-      connections.push(connection)
-      return connection
+// A fake pooled connection that records everything done to it, in order.
+function fakeConnection({ lockError, rollbackError } = {}) {
+  const events = []
+  return {
+    events,
+    async beginTransaction() { events.push('begin') },
+    async commit() { events.push('commit') },
+    async rollback() {
+      events.push('rollback')
+      if (rollbackError) throw rollbackError
     },
+    async query(sql, params) {
+      if (/pg_advisory_xact_lock/.test(sql)) {
+        events.push(`lock:${params[0]}`)
+        if (lockError) throw lockError
+      } else {
+        events.push('set')
+      }
+      return [[]]
+    },
+    release() { events.push('release') },
+    destroy() { events.push('destroy') },
   }
-  const initialize = async (connection) => {
-    assert.ok(connection.locked)
-    assert.equal(active++, 0, 'only one initializer may alter the schema')
-    await new Promise((resolve) => setImmediate(resolve))
-    active--
+}
+
+test('initialization runs inside a transaction holding a stable advisory lock', async () => {
+  const keys = []
+  for (const name of ['test-db', 'test-db']) {
+    const connection = fakeConnection()
+    await withSchemaLock({ getConnection: async () => connection }, name, async (given) => {
+      assert.equal(given, connection)
+      connection.events.push('initialize')
+    })
+    const lock = connection.events.find((event) => event.startsWith('lock:'))
+    keys.push(lock)
+    assert.deepEqual(connection.events.map((event) => event.split(':')[0]), ['begin', 'set', 'lock', 'initialize', 'commit', 'release'])
   }
-  await Promise.all([withSchemaLock(pool, 'test-db', initialize), withSchemaLock(pool, 'test-db', initialize)])
-  assert.equal(names[0], names[1])
-  assert.ok(names[0].length <= 64)
-  assert.ok(connections.every((connection) => connection.returned))
+  assert.equal(keys[0], keys[1], 'the same database must always use the same lock key')
+  assert.match(keys[0], /^lock:-?\d+$/)
 })
 
-test('failed schema initialization releases its lock and propagates the original error', async () => {
-  const failure = new Error('schema failed')
-  const events = []
-  const connection = {
-    async query(sql) {
-      events.push(sql.includes('GET_LOCK') ? 'acquire' : 'unlock')
-      return [[sql.includes('GET_LOCK') ? { acquired: 1 } : { released: 1 }]]
-    },
-    release() { events.push('return') },
+test('different databases use different lock keys', async () => {
+  const lockFor = async (name) => {
+    const connection = fakeConnection()
+    await withSchemaLock({ getConnection: async () => connection }, name, async () => {})
+    return connection.events.find((event) => event.startsWith('lock:'))
   }
+  assert.notEqual(await lockFor('one'), await lockFor('two'))
+})
+
+test('failed schema initialization rolls back, releases the connection and propagates the original error', async () => {
+  const failure = new Error('schema failed')
+  const connection = fakeConnection()
   await assert.rejects(withSchemaLock({ getConnection: async () => connection }, 'test-db', async () => {
     throw failure
   }), (error) => error === failure)
-  assert.deepEqual(events, ['acquire', 'unlock', 'return'])
+  assert.deepEqual(connection.events.map((event) => event.split(':')[0]), ['begin', 'set', 'lock', 'rollback', 'release'])
 })
 
-test('lock timeout fails before schema changes and returns the connection', async () => {
-  let returned = false
-  const connection = {
-    query: async () => [[{ acquired: 0 }]],
-    release() { returned = true },
-  }
+test('lock timeout is reported as busy before any schema change and returns the connection', async () => {
+  const connection = fakeConnection({ lockError: Object.assign(new Error('canceling statement due to lock timeout'), { code: '55P03' }) })
   await assert.rejects(withSchemaLock({ getConnection: async () => connection }, 'test-db', async () => {
-    assert.fail('must not run unlocked')
-  }), /initialization is busy/)
-  assert.ok(returned)
+    assert.fail('must not run without the lock')
+  }), (error) => error.code === 'SCHEMA_BUSY' && /initialization is busy/.test(error.message))
+  assert.ok(connection.events.includes('rollback'))
+  assert.ok(connection.events.includes('release'))
 })
 
-test('an uncertain lock release destroys the connection rather than pooling it', async () => {
-  let destroyed = false
-  const connection = {
-    query: async (sql) => [[sql.includes('GET_LOCK') ? { acquired: 1 } : { released: 0 }]],
-    destroy() { destroyed = true },
-    release() { assert.fail('must not reuse a session that may hold a lock') },
-  }
-  await assert.rejects(withSchemaLock({ getConnection: async () => connection }, 'test-db', async () => {}), /release the database schema lock/)
-  assert.ok(destroyed)
-})
-
-test('the complete schema initializer runs every query on the lock-owning connection', async () => {
-  const { pool, ensureCoreSchema } = require('../config/database')
-  const original = { getConnection: pool.getConnection, query: pool.query, execute: pool.execute }
-  let locked = false
-  let returned = false
-  const statements = []
-  const connection = {
-    async query(sql) {
-      if (sql.includes('GET_LOCK')) { locked = true; return [[{ acquired: 1 }]] }
-      assert.ok(locked, 'schema queries must be covered by the lock')
-      if (sql.includes('RELEASE_LOCK')) { locked = false; return [[{ released: 1 }]] }
-      statements.push(sql)
-      return [[]]
-    },
-    async execute(sql) {
-      assert.ok(locked)
-      statements.push(sql)
-      return [[{ id: 1 }]]
-    },
-    release() { assert.equal(locked, false); returned = true },
-  }
-  pool.getConnection = async () => connection
-  pool.query = pool.execute = async () => assert.fail('must not use another pooled connection for schema changes')
-  try {
-    await ensureCoreSchema()
-    assert.ok(statements.some((sql) => sql.includes('ADD CONSTRAINT fk_favourites_ad')))
-    assert.ok(statements.some((sql) => sql.includes('ADD CONSTRAINT fk_messages_ad')))
-    assert.ok(returned)
-  } finally {
-    Object.assign(pool, original)
-  }
+test('a failed rollback destroys the connection instead of pooling it', async () => {
+  const connection = fakeConnection({ rollbackError: new Error('connection lost') })
+  await assert.rejects(withSchemaLock({ getConnection: async () => connection }, 'test-db', async () => {
+    throw new Error('schema failed')
+  }), /schema failed/)
+  assert.ok(connection.events.includes('destroy'))
+  assert.ok(!connection.events.includes('release'))
 })

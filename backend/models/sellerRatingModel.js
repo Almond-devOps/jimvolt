@@ -15,7 +15,7 @@ async function summary(sellerId, reviewerId) {
 async function save(sellerId, reviewerId, score) {
   await pool.execute(
     `INSERT INTO seller_ratings (seller_id, reviewer_id, score) VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE score = VALUES(score)`, [sellerId, reviewerId, score],
+     ON CONFLICT (seller_id, reviewer_id) DO UPDATE SET score = EXCLUDED.score`, [sellerId, reviewerId, score],
   )
   return summary(sellerId, reviewerId)
 }

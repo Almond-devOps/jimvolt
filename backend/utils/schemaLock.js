@@ -1,39 +1,42 @@
 const { createHash } = require('node:crypto')
 
-// MySQL named locks belong to a session, so every schema query must use this
-// connection until the lock is released. A process-local promise cannot guard
-// against other Vercel instances starting at the same time.
+// Serialises schema initialisation across serverless instances with a PostgreSQL advisory lock.
+// The lock is transaction-scoped (pg_advisory_xact_lock), so it is released automatically on
+// COMMIT/ROLLBACK and also works behind PgBouncer in transaction-pooling mode.
+const LOCK_WAIT = '15s'
+
+function lockKey(databaseName) {
+  // A stable signed 64-bit key derived from the database name.
+  const digest = createHash('sha256').update(`jimvolt:schema:${databaseName}`).digest()
+  return digest.readBigInt64BE(0).toString()
+}
+
 async function withSchemaLock(pool, databaseName, initialize) {
   const connection = await pool.getConnection()
-  const lockName = `jimvolt:schema:${createHash('sha256').update(databaseName).digest('hex').slice(0, 40)}`
-  let locked = false
-  let failed = false
-  let reusable = false
+  let reusable = true
   try {
-    const [rows] = await connection.query('SELECT GET_LOCK(?, 30) AS acquired', [lockName])
-    reusable = true
-    locked = Number(rows[0]?.acquired) === 1
-    if (!locked) {
-      throw Object.assign(new Error('Database schema initialization is busy. Please retry shortly.'), { code: 'SCHEMA_BUSY' })
-    }
-    return await initialize(connection)
-  } catch (error) {
-    failed = true
-    throw error
-  } finally {
+    await connection.beginTransaction()
     try {
-      if (locked) {
-        const [rows] = await connection.query('SELECT RELEASE_LOCK(?) AS released', [lockName])
-        if (Number(rows[0]?.released) !== 1) throw new Error('Could not release the database schema lock.')
-      }
+      await connection.query(`SET LOCAL lock_timeout = '${LOCK_WAIT}'`)
+      await connection.query('SELECT pg_advisory_xact_lock(?::bigint)', [lockKey(databaseName)])
     } catch (error) {
-      reusable = false
-      if (!failed) throw error
-      console.error('Could not release the database schema lock:', error.message)
-    } finally {
-      if (reusable) connection.release()
-      else connection.destroy()
+      await connection.rollback().catch(() => { reusable = false })
+      if (error.code === '55P03' || /lock timeout/i.test(error.message || '')) {
+        throw Object.assign(new Error('Database schema initialization is busy. Please retry shortly.'), { code: 'SCHEMA_BUSY' })
+      }
+      throw error
     }
+    try {
+      const result = await initialize(connection)
+      await connection.commit()
+      return result
+    } catch (error) {
+      await connection.rollback().catch(() => { reusable = false })
+      throw error
+    }
+  } finally {
+    if (reusable) connection.release()
+    else connection.destroy()
   }
 }
 

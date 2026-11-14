@@ -21,9 +21,9 @@ async function writeAudit({
 async function getDashboard() {
   const [userRows] = await pool.query(
     `SELECT COUNT(*) AS total_users,
-            SUM(role = 'user' AND account_status = 'active') AS active_users,
-            SUM(account_status = 'suspended') AS suspended_users,
-            SUM(role IN ('admin', 'super_admin')) AS administrators
+            SUM(CASE WHEN role = 'user' AND account_status = 'active' THEN 1 ELSE 0 END) AS active_users,
+            SUM(CASE WHEN account_status = 'suspended' THEN 1 ELSE 0 END) AS suspended_users,
+            SUM(CASE WHEN role IN ('admin', 'super_admin') THEN 1 ELSE 0 END) AS administrators
      FROM users`,
   )
   const [sellerRows] = await pool.query(
@@ -31,10 +31,10 @@ async function getDashboard() {
   )
   const [adRows] = await pool.query(
     `SELECT COUNT(*) AS total_ads,
-            SUM(status = 'approved') AS approved_ads,
-            SUM(status = 'pending') AS pending_ads,
-            SUM(status = 'rejected') AS rejected_ads,
-            SUM(status = 'suspended') AS suspended_ads
+            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved_ads,
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_ads,
+            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected_ads,
+            SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) AS suspended_ads
      FROM advertisements`,
   )
   const [verificationRows] = await pool.query(
@@ -45,7 +45,7 @@ async function getDashboard() {
   )
   const [reportRows] = await pool.query(
     `SELECT COUNT(*) AS total_reports,
-            SUM(status IN ('open', 'investigating')) AS open_reports
+            SUM(CASE WHEN status IN ('open', 'investigating') THEN 1 ELSE 0 END) AS open_reports
      FROM reports`,
   )
   const [paymentRows] = await pool.query(
@@ -107,20 +107,20 @@ async function getDashboard() {
 
 async function getAnalytics() {
   const [registrations] = await pool.query(
-    `SELECT DATE_FORMAT(created_at, '%Y-%m') AS period, COUNT(*) AS total
+    `SELECT to_char(created_at, 'YYYY-MM') AS period, COUNT(*) AS total
      FROM users GROUP BY period ORDER BY period DESC LIMIT 24`,
   )
   const [adGrowth] = await pool.query(
-    `SELECT DATE_FORMAT(created_at, '%Y-%m') AS period, COUNT(*) AS total
+    `SELECT to_char(created_at, 'YYYY-MM') AS period, COUNT(*) AS total
      FROM advertisements GROUP BY period ORDER BY period DESC LIMIT 24`,
   )
   const [approvals] = await pool.query(
-    `SELECT DATE_FORMAT(approved_at, '%Y-%m') AS period, COUNT(*) AS total
+    `SELECT to_char(approved_at, 'YYYY-MM') AS period, COUNT(*) AS total
      FROM advertisements WHERE approved_at IS NOT NULL
      GROUP BY period ORDER BY period DESC LIMIT 24`,
   )
   const [revenue] = await pool.query(
-    `SELECT DATE_FORMAT(verified_at, '%Y-%m') AS period, SUM(amount) AS total
+    `SELECT to_char(verified_at, 'YYYY-MM') AS period, SUM(amount) AS total
      FROM payment_transactions
      WHERE status = 'succeeded' AND verified_at IS NOT NULL
      GROUP BY period ORDER BY period DESC LIMIT 24`,
@@ -131,7 +131,7 @@ async function getAnalytics() {
      GROUP BY c.id, c.name ORDER BY total DESC, c.name`,
   )
   const [activity] = await pool.query(
-    `SELECT DATE_FORMAT(created_at, '%Y-%m') AS period, COUNT(*) AS total
+    `SELECT to_char(created_at, 'YYYY-MM') AS period, COUNT(*) AS total
      FROM messages GROUP BY period ORDER BY period DESC LIMIT 24`,
   )
   const latestPeriod = (rows) => rows.slice().reverse()
@@ -154,7 +154,7 @@ async function listAds({ q, status, page, limit, sort }) {
   const values = []
   if (status) { where.push('a.status = ?'); values.push(status) }
   if (q) {
-    where.push('(a.title LIKE ? OR u.full_name LIKE ? OR u.email LIKE ? OR c.name LIKE ?)')
+    where.push('(a.title ILIKE ? OR u.full_name ILIKE ? OR u.email ILIKE ? OR c.name ILIKE ?)')
     values.push(...Array(4).fill(`%${q}%`))
   }
   const order = {
@@ -356,12 +356,12 @@ async function deleteAd(id, administratorId, reqMeta) {
 async function listUsers({ q, role, status, verified, verificationStatus, sort = 'newest', page, limit }) {
   const where = []
   const values = []
-  if (q) { where.push('(u.full_name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)'); values.push(...Array(3).fill(`%${q}%`)) }
+  if (q) { where.push('(u.full_name ILIKE ? OR u.email ILIKE ? OR u.phone ILIKE ?)'); values.push(...Array(3).fill(`%${q}%`)) }
   if (role) { where.push('u.role = ?'); values.push(role) }
   if (status) { where.push('u.account_status = ?'); values.push(status) }
   if (verified !== null && verified !== undefined) {
     where.push('u.is_verified = ?')
-    values.push(verified ? 1 : 0)
+    values.push(Boolean(verified))
   }
   if (verificationStatus === 'none') {
     where.push('NOT EXISTS (SELECT 1 FROM seller_verifications sv WHERE sv.user_id = u.id)')
@@ -499,7 +499,7 @@ async function setUserRole({ id, role, administratorId, administratorRole, reqMe
 }
 
 async function listSellers({ q, page, limit }) {
-  const search = q ? `AND (u.full_name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)` : ''
+  const search = q ? `AND (u.full_name ILIKE ? OR u.email ILIKE ? OR u.phone ILIKE ?)` : ''
   const searchValues = q ? Array(3).fill(`%${q}%`) : []
   const [rows] = await pool.execute(
     `SELECT u.id AS user_id, u.full_name, u.email, u.phone, u.account_status, u.is_verified,
@@ -527,7 +527,7 @@ async function listCategories() {
      LEFT JOIN category_subcategories p ON p.subcategory_id = c.id
      LEFT JOIN categories parent ON parent.id = p.category_id
      LEFT JOIN advertisements a ON a.category_id = c.id
-     GROUP BY c.id ORDER BY c.display_order, c.name`,
+     GROUP BY c.id, p.category_id, parent.name ORDER BY c.display_order, c.name`,
   )
   return rows
 }
@@ -609,7 +609,7 @@ async function listReports({ status, category, q, page, limit }) {
   if (status) { where.push('r.status = ?'); values.push(status) }
   if (category) { where.push('r.category = ?'); values.push(category) }
   if (q) {
-    where.push('(r.description LIKE ? OR a.title LIKE ? OR reporter.full_name LIKE ?)')
+    where.push('(r.description ILIKE ? OR a.title ILIKE ? OR reporter.full_name ILIKE ?)')
     values.push(...Array(3).fill(`%${q}%`))
   }
   const condition = where.length ? `WHERE ${where.join(' AND ')}` : ''
@@ -664,15 +664,15 @@ async function createReport({
 }) {
   const [recent] = await pool.execute(
     `SELECT id FROM reports WHERE reporter_id = ? AND category = ?
-     AND ((advertisement_id <=> ?) AND (seller_id <=> ?)
-       AND (conversation_id <=> ?) AND (message_id <=> ?))
-     AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) LIMIT 1`,
+     AND ((advertisement_id IS NOT DISTINCT FROM ?) AND (seller_id IS NOT DISTINCT FROM ?)
+       AND (conversation_id IS NOT DISTINCT FROM ?) AND (message_id IS NOT DISTINCT FROM ?))
+     AND created_at >= (NOW() - INTERVAL '24 hours') LIMIT 1`,
     [reporterId, category, advertisementId || null, sellerId || null,
       conversationId || null, messageId || null],
   )
   if (recent.length) return null
   const [count] = await pool.execute(
-    'SELECT COUNT(*) AS total FROM reports WHERE reporter_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)',
+    "SELECT COUNT(*) AS total FROM reports WHERE reporter_id = ? AND created_at >= (NOW() - INTERVAL '1 day')",
     [reporterId],
   )
   if (Number(count[0].total) >= 5) return 'rate_limited'
@@ -717,7 +717,7 @@ async function listPayments({ status, page, limit }) {
 }
 
 async function listAuditLogs({ q, page, limit }) {
-  const where = q ? 'WHERE l.action LIKE ? OR l.entity_type LIKE ? OR u.full_name LIKE ?' : ''
+  const where = q ? 'WHERE l.action ILIKE ? OR l.entity_type ILIKE ? OR u.full_name ILIKE ?' : ''
   const values = q ? Array(3).fill(`%${q}%`) : []
   const [rows] = await pool.execute(
     `SELECT l.id, l.administrator_id, u.full_name AS administrator_name, l.action,

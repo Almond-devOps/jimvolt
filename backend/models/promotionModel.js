@@ -240,7 +240,7 @@ async function completeVerifiedPayment(checkoutId, verified, event = null) {
        FROM payment_transactions p
        JOIN promotions pr ON pr.payment_id = p.id
        LEFT JOIN advertisements a ON a.id = pr.advertisement_id
-       WHERE p.provider = 'bachs' AND p.provider_checkout_id = ? FOR UPDATE`,
+       WHERE p.provider = 'bachs' AND p.provider_checkout_id = ? FOR UPDATE OF p, pr`,
       [checkoutId],
     )
     if (!rows.length) throw makeError('Payment reference not found.', 404)
@@ -282,8 +282,8 @@ async function completeVerifiedPayment(checkoutId, verified, event = null) {
     await connection.execute(
       `UPDATE promotions
        SET status = ?,
-           starts_at = IF(? = 'active', CURRENT_TIMESTAMP, NULL),
-           expires_at = IF(? = 'active', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL duration_days DAY), NULL)
+           starts_at = CASE WHEN ?::text = 'active' THEN CURRENT_TIMESTAMP ELSE NULL END,
+           expires_at = CASE WHEN ?::text = 'active' THEN CURRENT_TIMESTAMP + (duration_days * INTERVAL '1 day') ELSE NULL END
        WHERE id = ? AND status IN ('pending_payment', 'failed')`,
       [promotionStatus, promotionStatus, promotionStatus, payment.promotion_id],
     )
@@ -301,7 +301,7 @@ async function activateApprovedAdvertisement(connection, advertisementId) {
   await connection.execute(
     `UPDATE promotions
      SET status = 'active', starts_at = CURRENT_TIMESTAMP,
-         expires_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL duration_days DAY)
+         expires_at = CURRENT_TIMESTAMP + (duration_days * INTERVAL '1 day')
      WHERE advertisement_id = ? AND status = 'pending_approval'
        AND expires_at IS NULL
        AND EXISTS (
@@ -371,9 +371,9 @@ async function trackAdvertisement(advertisementId, event) {
   const column = event === 'click' ? 'clicks' : 'impressions'
   const [result] = await pool.execute(
     `UPDATE promotions pr
-     JOIN advertisements a ON a.id = pr.advertisement_id
-     SET pr.${column} = pr.${column} + 1
-     WHERE pr.advertisement_id = ? AND pr.status = 'active'
+     SET ${column} = pr.${column} + 1
+     FROM advertisements a
+     WHERE a.id = pr.advertisement_id AND pr.advertisement_id = ? AND pr.status = 'active'
        AND pr.expires_at > CURRENT_TIMESTAMP AND a.status = 'approved'`,
     [advertisementId],
   )
@@ -454,28 +454,28 @@ async function moderatePromotion({ id, administratorId, status, reqMeta }) {
 
 async function getMonetization({ from, to }) {
   await expireDuePromotions()
-  const dateFilters = from && to ? 'AND created_at >= ? AND created_at < DATE_ADD(?, INTERVAL 1 DAY)' : ''
+  const dateFilters = from && to ? 'AND created_at >= ?::date AND created_at < (?::date + 1)' : ''
   const dateValues = from && to ? [from, to] : []
   const [payments] = await pool.execute(
     `SELECT
        COALESCE(SUM(CASE WHEN status = 'succeeded' AND verified_at IS NOT NULL ${dateFilters} THEN amount ELSE 0 END), 0) AS revenue,
-       SUM(status = 'succeeded' AND verified_at IS NOT NULL ${dateFilters}) AS successful,
-       SUM(status = 'pending' ${dateFilters}) AS pending,
-       SUM(status = 'failed' ${dateFilters}) AS failed,
+       SUM(CASE WHEN status = 'succeeded' AND verified_at IS NOT NULL ${dateFilters} THEN 1 ELSE 0 END) AS successful,
+       SUM(CASE WHEN status = 'pending' ${dateFilters} THEN 1 ELSE 0 END) AS pending,
+       SUM(CASE WHEN status = 'failed' ${dateFilters} THEN 1 ELSE 0 END) AS failed,
        COALESCE(SUM(CASE WHEN status = 'succeeded' AND verified_at >= CURRENT_DATE AND verified_at IS NOT NULL THEN amount ELSE 0 END), 0) AS today_revenue,
-       COALESCE(SUM(CASE WHEN status = 'succeeded' AND verified_at >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') AND verified_at IS NOT NULL THEN amount ELSE 0 END), 0) AS month_revenue
+       COALESCE(SUM(CASE WHEN status = 'succeeded' AND verified_at >= date_trunc('month', CURRENT_DATE) AND verified_at IS NOT NULL THEN amount ELSE 0 END), 0) AS month_revenue
      FROM payment_transactions WHERE 1 = 1`,
     [...dateValues, ...dateValues, ...dateValues, ...dateValues],
   )
   const [promotionCounts] = await pool.query(
-    `SELECT SUM(status = 'active' AND expires_at > CURRENT_TIMESTAMP) AS active,
-            SUM(status = 'expired' OR (status = 'active' AND expires_at <= CURRENT_TIMESTAMP)) AS expired
+    `SELECT SUM(CASE WHEN status = 'active' AND expires_at > CURRENT_TIMESTAMP THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN status = 'expired' OR (status = 'active' AND expires_at <= CURRENT_TIMESTAMP) THEN 1 ELSE 0 END) AS expired
      FROM promotions`,
   )
   const [dailyRevenue] = await pool.execute(
     `SELECT DATE(verified_at) AS date, SUM(amount) AS revenue
      FROM payment_transactions WHERE status = 'succeeded' AND verified_at IS NOT NULL
-       ${from && to ? 'AND verified_at >= ? AND verified_at < DATE_ADD(?, INTERVAL 1 DAY)' : 'AND verified_at >= DATE_SUB(CURRENT_DATE, INTERVAL 29 DAY)'}
+       ${from && to ? 'AND verified_at >= ?::date AND verified_at < (?::date + 1)' : 'AND verified_at >= CURRENT_DATE - 29'}
      GROUP BY DATE(verified_at) ORDER BY date ASC`,
     from && to ? [from, to] : [],
   )
