@@ -69,7 +69,9 @@ export default function App() {
           <Route path="/sellers/:id" element={<SellerDetailPage />} />
           <Route path="/seller/:slug" element={<SellerStorefrontPage />} />
           {/* Canonical public profile URLs: /@username */}
-          <Route path="/@:slug" element={<SellerSlugPage />} />
+          {/* React Router cannot match "@" plus a param in one segment, so match the whole
+              segment and let the page accept only handles that start with "@". */}
+          <Route path="/:handle" element={<SellerSlugPage />} />
           <Route path="/safety" element={<InformationPage />} />
           <Route path="/contact" element={<InformationPage />} />
           <Route path="/terms" element={<InformationPage />} />

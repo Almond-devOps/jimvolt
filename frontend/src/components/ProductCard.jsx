@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Heart } from 'lucide-react';
+import { MapPin, Heart, Star } from 'lucide-react';
 import { CATEGORIES, FALLBACK_CATEGORY_IMAGE } from '../utils/constants.js';
 import { formatNaira, timeAgo } from '../utils/format.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -89,6 +89,7 @@ export default function ProductCard({ ad, initiallySaved = false, onUnsave }) {
         <p className="card-price">{formatNaira(ad.price)}</p>
         <h3 className="card-title"><Link to={`/ads/${ad.id}`} onClick={trackClick}>{ad.title}</Link></h3>
         <p className="card-meta"><MapPin size={14} aria-hidden="true" /><span>{ad.city}, {ad.state}</span></p>
+        {ad.seller?.rating?.count > 0 && <p className="card-rating" aria-label={`Seller rated ${ad.seller.rating.average.toFixed(1)} out of 5 from ${ad.seller.rating.count} ratings`}><Star size={14} fill="currentColor" aria-hidden="true" /><strong>{ad.seller.rating.average.toFixed(1)}</strong><span>({ad.seller.rating.count})</span></p>}
         <p className="card-foot">
           <span className="seller"><span className="card-seller-name">{sellerName}</span><VerifiedBusinessBadge verified={Boolean(ad.seller?.is_verified || ad.verified)} /></span>
           <time dateTime={postedAt}>{timeAgo(postedAt)}</time>

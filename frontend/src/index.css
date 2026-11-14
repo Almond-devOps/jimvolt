@@ -1329,3 +1329,7 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
 .seller-rating-summary svg { flex-shrink: 0; color: #b77906; }
 .seller-rating-form { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
 .seller-rating-form .field { flex: 1 1 130px; }
+
+.card-rating { display: flex; align-items: center; gap: 4px; margin: 4px 0 0; font-size: .82rem; color: #B45309; }
+.card-rating strong { color: var(--text); }
+.card-rating span { color: var(--muted); }
