@@ -9,7 +9,7 @@ function SkeletonGrid({ n }) {
 
 /** A titled section that loads its own ads, with loading, error and empty states. */
 export default function ListingSection({ title, subtitle, loader, to, skeletons = 4 }) {
-  const { data, loading, error } = useAsync(loader);
+  const { data, loading, error, retry } = useAsync(loader);
   return (
     <section className="section container">
       <div className="section-head">
@@ -17,7 +17,7 @@ export default function ListingSection({ title, subtitle, loader, to, skeletons 
         {to && <Link to={to} className="link">View all</Link>}
       </div>
       {loading && <SkeletonGrid n={skeletons} />}
-      {error && <p role="alert" className="alert">{error}</p>}
+      {error && <div role="alert" className="alert">{error} <button type="button" className="link" onClick={retry}>Try again</button></div>}
       {data && data.length === 0 && <EmptyState title="No adverts yet" text="Be the first to post in this section." action={<Link className="btn btn-primary" to="/post-ad">Post your ad</Link>} />}
       {data && data.length > 0 && <div className="grid">{data.map((ad) => <ProductCard key={ad.id} ad={ad} />)}</div>}
     </section>

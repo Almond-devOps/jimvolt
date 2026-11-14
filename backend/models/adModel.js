@@ -87,12 +87,14 @@ async function findSearchSuggestions(search, limit = 8) {
   const conditions = []
   const values = []
   for (const term of terms) {
-    conditions.push(`(${columns.map((column) => `${column} LIKE ?`).join(' OR ')})`)
+    conditions.push(`(${columns.map((column) => `${column} ILIKE ?`).join(' OR ')})`)
     values.push(...columns.map(() => `%${term}%`))
   }
   const [rows] = await pool.execute(
     `SELECT a.id, a.title, a.brand, a.price, a.state, a.city,
-            c.name AS category_name, c.slug AS category_slug
+            c.name AS category_name, c.slug AS category_slug,
+            EXISTS (SELECT 1 FROM promotions pr WHERE pr.advertisement_id = a.id
+              AND pr.status = 'active' AND pr.expires_at > CURRENT_TIMESTAMP) AS is_sponsored
      FROM advertisements a
      JOIN categories c ON c.id = a.category_id
      WHERE a.status = 'approved' AND ${conditions.join(' AND ')}
@@ -204,8 +206,8 @@ async function findOwnedAds({ userId, status, search, sortBy, limit, offset }) {
     values.push(status)
   }
   if (search) {
-    where.push(`(a.title LIKE ? OR a.brand LIKE ? OR a.description LIKE ?
-      OR c.name LIKE ? OR a.state LIKE ? OR a.city LIKE ?)`)
+    where.push(`(a.title ILIKE ? OR a.brand ILIKE ? OR a.description ILIKE ?
+      OR c.name ILIKE ? OR a.state ILIKE ? OR a.city ILIKE ?)`)
     values.push(...Array(6).fill(`%${search}%`))
   }
   const orderBy = {
@@ -241,9 +243,9 @@ async function countOwnedAds({ userId, status, search }) {
     values.push(status)
   }
   if (search) {
-    where.push(`(title LIKE ? OR brand LIKE ? OR description LIKE ?
-      OR category_id IN (SELECT id FROM categories WHERE name LIKE ?)
-      OR state LIKE ? OR city LIKE ?)`)
+    where.push(`(title ILIKE ? OR brand ILIKE ? OR description ILIKE ?
+      OR category_id IN (SELECT id FROM categories WHERE name ILIKE ?)
+      OR state ILIKE ? OR city ILIKE ?)`)
     values.push(...Array(6).fill(`%${search}%`))
   }
   const [rows] = await pool.execute(

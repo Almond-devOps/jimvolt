@@ -170,10 +170,10 @@ async function getSlugForUserId(userId) {
 async function getDashboard(userId) {
   const [statsRows] = await pool.execute(
     `SELECT COUNT(*) AS total_ads,
-            SUM(status = 'approved') AS active_ads,
-            SUM(status = 'pending') AS pending_ads,
-            SUM(status = 'rejected') AS rejected_ads,
-            SUM(status = 'paused') AS paused_ads,
+            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS active_ads,
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_ads,
+            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected_ads,
+            SUM(CASE WHEN status = 'paused' THEN 1 ELSE 0 END) AS paused_ads,
             COALESCE(SUM(views), 0) AS total_views
      FROM advertisements WHERE user_id = ?`,
     [userId],
@@ -380,31 +380,31 @@ async function getAnalytics(userId, fromDate, toDate, advertisementId) {
     ? [userId, fromDate, toDate, advertisementId]
     : [userId, fromDate, toDate]
   const [viewRows] = await pool.execute(
-    `SELECT DATE_FORMAT(aa.occurred_at, '%Y-%m-%d') AS day, COUNT(*) AS total
+    `SELECT to_char(aa.occurred_at, 'YYYY-MM-DD') AS day, COUNT(*) AS total
      FROM advertisement_analytics aa
      JOIN advertisements a ON a.id = aa.advertisement_id
-     WHERE a.user_id = ? AND aa.occurred_at >= ? AND aa.occurred_at < DATE_ADD(?, INTERVAL 1 DAY)
+     WHERE a.user_id = ? AND aa.occurred_at >= ? AND aa.occurred_at < (?::date + 1)
        ${adFilter}
-     GROUP BY DATE_FORMAT(aa.occurred_at, '%Y-%m-%d') ORDER BY day`,
+     GROUP BY to_char(aa.occurred_at, 'YYYY-MM-DD') ORDER BY day`,
     params,
   )
   const [enquiryRows] = await pool.execute(
-    `SELECT DATE_FORMAT(m.created_at, '%Y-%m-%d') AS day, COUNT(*) AS total
+    `SELECT to_char(m.created_at, 'YYYY-MM-DD') AS day, COUNT(*) AS total
      FROM messages m
      JOIN advertisements a ON a.id = m.advertisement_id
      WHERE a.user_id = ? AND m.receiver_id = ?
-       AND m.created_at >= ? AND m.created_at < DATE_ADD(?, INTERVAL 1 DAY)
+       AND m.created_at >= ? AND m.created_at < (?::date + 1)
        ${advertisementId ? 'AND a.id = ?' : ''}
-     GROUP BY DATE_FORMAT(m.created_at, '%Y-%m-%d') ORDER BY day`,
+     GROUP BY to_char(m.created_at, 'YYYY-MM-DD') ORDER BY day`,
     advertisementId
       ? [userId, userId, fromDate, toDate, advertisementId]
       : [userId, userId, fromDate, toDate],
   )
   const [totalRows] = await pool.execute(
     `SELECT COUNT(*) AS total_ads,
-            COALESCE(SUM(a.status = 'approved'), 0) AS active_ads,
-            COALESCE(SUM(a.status = 'pending'), 0) AS pending_ads,
-            COALESCE(SUM(a.status = 'rejected'), 0) AS rejected_ads,
+            COALESCE(SUM(CASE WHEN a.status = 'approved' THEN 1 ELSE 0 END), 0) AS active_ads,
+            COALESCE(SUM(CASE WHEN a.status = 'pending' THEN 1 ELSE 0 END), 0) AS pending_ads,
+            COALESCE(SUM(CASE WHEN a.status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejected_ads,
             COALESCE(SUM(a.views), 0) AS total_views
      FROM advertisements a WHERE a.user_id = ? ${advertisementId ? 'AND a.id = ?' : ''}`,
     advertisementId ? [userId, advertisementId] : [userId],
@@ -595,7 +595,7 @@ async function listVerifications({ status, q = '', page, limit }) {
   const values = status ? [status] : []
   const conditions = status ? [where.slice(6)] : []
   if (q) {
-    conditions.push('(sv.business_name LIKE ? OR u.full_name LIKE ? OR u.email LIKE ? OR sv.business_phone LIKE ?)')
+    conditions.push('(sv.business_name ILIKE ? OR u.full_name ILIKE ? OR u.email ILIKE ? OR sv.business_phone ILIKE ?)')
     values.push(...Array(4).fill(`%${q}%`))
   }
   const condition = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -620,10 +620,10 @@ async function listVerifications({ status, q = '', page, limit }) {
   )
   const [stats] = await pool.query(
     `SELECT COUNT(*) AS total,
-            SUM(status IN ('pending', 'information_requested')) AS pending,
-            SUM(status = 'verified') AS verified,
-            SUM(status = 'rejected') AS rejected,
-            SUM(status = 'information_requested') AS information_requested
+            SUM(CASE WHEN status IN ('pending', 'information_requested') THEN 1 ELSE 0 END) AS pending,
+            SUM(CASE WHEN status = 'verified' THEN 1 ELSE 0 END) AS verified,
+            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+            SUM(CASE WHEN status = 'information_requested' THEN 1 ELSE 0 END) AS information_requested
      FROM seller_verifications`,
   )
   return {

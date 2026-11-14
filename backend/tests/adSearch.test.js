@@ -17,7 +17,7 @@ test('builds parameterized multi-field search and filters approved listings only
   })
 
   assert.match(filters.where, /a\.status = 'approved'/)
-  assert.match(filters.where, /MATCH\(a\.title, a\.description, a\.brand, a\.specifications\)/)
+  assert.match(filters.where, /to_tsvector\('simple', coalesce\(a\.title, ''\).*@@ to_tsquery\('simple', \?\)/)
   assert.match(filters.where, /a\.condition_type = \?/)
   assert.match(filters.where, /u\.is_verified = \?/)
   assert.match(filters.where, /a\.is_featured = \?/)

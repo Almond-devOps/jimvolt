@@ -24,17 +24,19 @@ function buildFilters(query) {
     const tokenGroups = []
     const tokenValues = []
     for (const term of terms) {
-      tokenGroups.push(`(${likeColumns.map((column) => `${column} LIKE ?`).join(' OR ')})`)
+      tokenGroups.push(`(${likeColumns.map((column) => `${column} ILIKE ?`).join(' OR ')})`)
       tokenValues.push(...likeColumns.map(() => `%${term}%`))
     }
 
+    // Every term must match as a word prefix ("sol" finds "solar"), like the old boolean-mode search.
     const booleanSearch = terms
       .map((term) => term.replace(/[^\p{L}\p{N}]+/gu, ''))
       .filter((term) => term.length >= 3)
-      .map((term) => `+${term}*`)
-      .join(' ')
+      .map((term) => `${term}:*`)
+      .join(' & ')
+    // This expression must match the ft_ads_search index in schema.sql so PostgreSQL can use it.
     const fullText = booleanSearch
-      ? 'MATCH(a.title, a.description, a.brand, a.specifications) AGAINST (? IN BOOLEAN MODE)'
+      ? `to_tsvector('simple', coalesce(a.title, '') || ' ' || coalesce(a.description, '') || ' ' || coalesce(a.brand, '') || ' ' || coalesce(a.specifications, '')) @@ to_tsquery('simple', ?)`
       : null
 
     conditions.push(fullText ? `(${fullText} OR (${tokenGroups.join(' AND ')}))` : `(${tokenGroups.join(' AND ')})`)
@@ -68,7 +70,7 @@ function buildFilters(query) {
   }
   if (query.verified !== undefined && query.verified !== '') {
     conditions.push('u.is_verified = ?')
-    values.push(query.verified === 'true' ? 1 : 0)
+    values.push(query.verified === 'true')
   }
   if (query.featured !== undefined && query.featured !== '') {
     const featured = query.featured === 'true' || query.featured === '1'
@@ -77,10 +79,10 @@ function buildFilters(query) {
           AND pr.status = 'active' AND pr.expires_at > CURRENT_TIMESTAMP))`
       : `(a.is_featured = ? AND NOT EXISTS (SELECT 1 FROM promotions pr WHERE pr.advertisement_id = a.id
           AND pr.status = 'active' AND pr.expires_at > CURRENT_TIMESTAMP))`)
-    values.push(featured ? 1 : 0)
+    values.push(featured)
   }
   if (query.recently === 'true') {
-    conditions.push('a.created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 7 DAY)')
+    conditions.push("a.created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'")
   }
 
   return { where: `WHERE ${conditions.join(' AND ')}`, values }
@@ -89,7 +91,7 @@ function buildFilters(query) {
 function randomOrder(seed) {
   const value = Number(seed)
   const safeSeed = Number.isInteger(value) && value >= 0 && value <= 4294967295 ? value : 0
-  return `CRC32(CONCAT(a.id, ':${safeSeed}')), a.id ASC`
+  return `hashtext(CONCAT(a.id, ':${safeSeed}')), a.id ASC`
 }
 
 module.exports = { buildFilters, normalizeState, sortOrders, randomOrder }

@@ -20,7 +20,7 @@ async function ensureInitialCategories() {
     await pool.execute(
       `INSERT INTO categories (name, slug, description)
        VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE name = VALUES(name)`,
+       ON CONFLICT DO NOTHING`,
       [name, slug, description],
     )
   }
@@ -34,9 +34,13 @@ async function findAll() {
 }
 
 async function findByIdOrSlug(value) {
+  // PostgreSQL will not compare a bigint id with a text slug, so only compare the id for numbers.
+  const text = String(value)
+  const numeric = /^\d+$/.test(text)
   const [rows] = await pool.execute(
-    'SELECT id, name, slug, description, image, created_at FROM categories WHERE is_active = TRUE AND (id = ? OR slug = ?) LIMIT 1',
-    [value, value],
+    `SELECT id, name, slug, description, image, created_at FROM categories
+     WHERE is_active = TRUE AND (${numeric ? 'id = ? OR ' : ''}slug = ?) LIMIT 1`,
+    numeric ? [Number(text), text] : [text],
   )
   return rows[0] || null
 }

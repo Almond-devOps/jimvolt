@@ -70,8 +70,8 @@ async function createOrGetConversation({ buyerId, sellerId, advertisementId }) {
 
 async function listConversations(userId, search = '') {
   const searchClause = search
-    ? `AND (other.full_name LIKE ?
-            OR a.title LIKE ? OR last_message.message_content LIKE ?)`
+    ? `AND (other.full_name ILIKE ?
+            OR a.title ILIKE ? OR last_message.message_content ILIKE ?)`
     : ''
   const searchValues = search ? Array(3).fill(`%${search}%`) : []
   const [rows] = await pool.execute(
@@ -92,7 +92,7 @@ async function listConversations(userId, search = '') {
             cp.is_archived
      FROM conversations c
      JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_id = ?
-     JOIN users other ON other.id = IF(c.buyer_id = ?, c.seller_id, c.buyer_id)
+     JOIN users other ON other.id = CASE WHEN c.buyer_id = ? THEN c.seller_id ELSE c.buyer_id END
      LEFT JOIN advertisements a ON a.id = c.advertisement_id
      LEFT JOIN messages last_message ON last_message.id = (
        SELECT m.id FROM messages m WHERE m.conversation_id = c.id
@@ -140,7 +140,7 @@ async function getConversation(conversationId, userId) {
              WHERE pi.advertisement_id = a.id ORDER BY pi.id LIMIT 1) AS advertisement_image
      FROM conversations c
      JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_id = ?
-     JOIN users other ON other.id = IF(c.buyer_id = ?, c.seller_id, c.buyer_id)
+     JOIN users other ON other.id = CASE WHEN c.buyer_id = ? THEN c.seller_id ELSE c.buyer_id END
      LEFT JOIN advertisements a ON a.id = c.advertisement_id
      WHERE c.id = ? LIMIT 1`,
     [userId, userId, conversationId],
@@ -340,7 +340,7 @@ async function conversationIdsForUser(userId) {
 
 async function peerIdsForUser(userId) {
   const [rows] = await pool.execute(
-    `SELECT DISTINCT IF(c.buyer_id = ?, c.seller_id, c.buyer_id) AS user_id
+    `SELECT DISTINCT CASE WHEN c.buyer_id = ? THEN c.seller_id ELSE c.buyer_id END AS user_id
      FROM conversations c JOIN conversation_participants cp
        ON cp.conversation_id = c.id AND cp.user_id = ?`,
     [userId, userId],
