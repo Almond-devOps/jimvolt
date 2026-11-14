@@ -41,6 +41,62 @@ const pages = {
       'You can update profile information in account settings or contact support with a privacy request.',
     ],
   },
+  '/refund-policy': {
+    eyebrow: 'Payments',
+    title: 'Refund policy',
+    updated: 'November 14, 2026',
+    intro: 'Browsing and posting on Jimvolt is free. The only payments Jimvolt takes are for paid promotions that give an approved advertisement extra visibility. This policy explains when those payments are refunded.',
+    points: [],
+    sections: [
+      {
+        heading: 'What this policy covers',
+        points: [
+          'Promotion packages (Boost, Featured, Premium and Premium Plus) paid through our payment partner, Bachs.',
+          'It does not cover purchases between buyers and sellers. Jimvolt does not take payment for products, hold buyer funds, or ship goods, so refunds for a product are agreed directly with the seller.',
+        ],
+      },
+      {
+        heading: 'When you are entitled to a refund',
+        points: [
+          'You were charged but the promotion was never activated on your advertisement.',
+          'You were charged more than once for the same promotion.',
+          'We removed or rejected your advertisement for a reason that was not caused by you before the promotion ran its full length. You will be refunded for the days that were not used.',
+          'We cannot deliver the promotion because of a fault on our side, such as an outage that stopped it from showing.',
+        ],
+      },
+      {
+        heading: 'When a refund is not available',
+        points: [
+          'The promotion has started and ran as described, and you later change your mind.',
+          'Your advertisement was removed because it broke the Terms of use, for example a prohibited, counterfeit or misleading listing.',
+          'The advertisement received fewer views, enquiries or sales than you hoped for. Promotions improve visibility but do not guarantee results.',
+          'You marked the product as sold, or deleted the advertisement, while the promotion was running.',
+        ],
+      },
+      {
+        heading: 'How to request a refund',
+        points: [
+          'Contact us through the Contact page within 14 days of the payment.',
+          'Include your account email, the advertisement title or ID, and the payment reference shown in your promotions list.',
+          'We review requests within 5 business days and tell you the outcome by email.',
+        ],
+      },
+      {
+        heading: 'How refunds are paid',
+        points: [
+          'Approved refunds go back to the original payment method through Bachs.',
+          'Your bank or card provider may take several business days to show the money. We cannot speed up that step.',
+          'If a refund is for part of a promotion, the amount is worked out from the unused days.',
+        ],
+      },
+      {
+        heading: 'Changes to this policy',
+        points: [
+          'We may update this policy. The date at the top shows when it last changed, and the version in force when you paid applies to that payment.',
+        ],
+      },
+    ],
+  },
 };
 
 export default function InformationPage() {
@@ -52,8 +108,16 @@ export default function InformationPage() {
       <article className="panel information-page">
         <p className="eyebrow">{page.eyebrow}</p>
         <h1>{page.title}</h1>
+        {page.updated && <p className="muted">Last updated {page.updated}</p>}
         <p>{page.intro}</p>
         {page.points.length > 0 && <ul>{page.points.map((point) => <li key={point}>{point}</li>)}</ul>}
+        {page.sections?.map((section) => (
+          <section key={section.heading}>
+            <h2>{section.heading}</h2>
+            <ul>{section.points.map((point) => <li key={point}>{point}</li>)}</ul>
+          </section>
+        ))}
+        {pathname === '/refund-policy' && <p>Questions about a payment? <Link className="link" to="/contact">Contact support</Link>.</p>}
         {pathname === '/contact' && (supportEmail
           ? <a className="btn btn-primary" href={`mailto:${supportEmail}?subject=Jimvolt%20marketplace%20support`}>Email {supportEmail}</a>
           : <p className="notice error">Support email is not configured. Set VITE_SUPPORT_EMAIL to publish the support contact.</p>)}

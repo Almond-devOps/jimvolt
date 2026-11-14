@@ -76,6 +76,7 @@ export default function App() {
           <Route path="/contact" element={<InformationPage />} />
           <Route path="/terms" element={<InformationPage />} />
           <Route path="/privacy" element={<InformationPage />} />
+          <Route path="/refund-policy" element={<InformationPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/ads" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/analytics" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
