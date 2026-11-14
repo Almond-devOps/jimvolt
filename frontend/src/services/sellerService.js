@@ -12,3 +12,4 @@ export const updateSellerVerification = (formData) => api.put('/seller/verificat
 export const getSellerNotifications = () => api.get('/seller/notifications');
 export const markSellerNotificationRead = (id) => api.put(`/seller/notifications/${id}/read`);
 export const getSellerStorefront = (slug) => api.get(`/seller/public/${encodeURIComponent(slug)}`);
+export const getSellerProfileBySlug = (slug) => api.get(`/seller/public/slug/${encodeURIComponent(slug)}`);

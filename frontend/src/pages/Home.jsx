@@ -60,7 +60,7 @@ export default function Home() {
         </div>
         <div className="sellers">
           {(sellers.data || []).map((s) => (
-            <Link to={`/sellers/${s.id}`} key={s.id} className="seller-card">
+            <Link to={s.username ? `/@${s.username}` : `/sellers/${s.id}`} key={s.id} className="seller-card">
               <UserAvatar src={s.profileImage} name={s.name} className="avatar" />
               <span>
                 <strong>{s.name} <BadgeCheck size={16} className="ok" aria-label="Verified" /></strong>

@@ -135,7 +135,7 @@ export default function ShareProfileDialog({ profile, onClose }) {
           />
           <div className="share-profile-identity-copy">
             <h3>{profile.full_name}</h3>
-            <p>Member #{profile.id}</p>
+            <p>{profile.username ? `@${profile.username}` : `Member #${profile.id}`}</p>
           </div>
         </div>
 

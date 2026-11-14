@@ -188,13 +188,13 @@ async function updateLastLogin(id) {
 
 async function findVerifiedSellers(limit = 8) {
   const [rows] = await pool.execute(
-    `SELECT u.id, u.full_name, u.profile_image, COUNT(a.id) AS advertisements,
+    `SELECT u.id, u.full_name, u.username, u.profile_image, COUNT(a.id) AS advertisements,
             COALESCE(MAX(a.state), '') AS state
      FROM users u
      JOIN advertisements a ON a.user_id = u.id AND a.status = 'approved'
      WHERE (SELECT sv.status = 'verified' FROM seller_verifications sv
             WHERE sv.user_id = u.id ORDER BY sv.id DESC LIMIT 1) = TRUE
-     GROUP BY u.id, u.full_name, u.profile_image
+     GROUP BY u.id, u.full_name, u.username, u.profile_image
      ORDER BY COUNT(a.id) DESC
      LIMIT ?`,
     [limit],
@@ -202,6 +202,7 @@ async function findVerifiedSellers(limit = 8) {
   return rows.map((row) => ({
     id: row.id,
     name: row.full_name,
+    username: row.username || null,
     profileImage: row.profile_image,
     ads: Number(row.advertisements),
     state: row.state,

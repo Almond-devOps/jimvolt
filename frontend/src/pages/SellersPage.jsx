@@ -24,7 +24,7 @@ export default function SellersPage() {
       {error && <div className="alert" role="alert">{error}</div>}
       {loading ? <div className="grid" role="status" aria-label="Loading verified sellers">{Array.from({ length: 6 }, (_, i) => <div key={i} className="shimmer" style={{ height: 150 }} />)}</div> : !sellers.length ? <div className="empty">No verified sellers with active listings yet.</div> : (
         <div className="sellers sellers-page-grid">{sellers.map((seller) => (
-          <Link className="seller-card" key={seller.id} to={`/sellers/${seller.id}`}>
+          <Link className="seller-card" key={seller.id} to={seller.username ? `/@${seller.username}` : `/sellers/${seller.id}`}>
             <UserAvatar src={seller.profileImage} name={seller.name} className="avatar" />
             <span><strong>{seller.name} <BadgeCheck size={16} className="ok" /></strong><small><MapPin size={13} /> {seller.state} · {seller.ads} active adverts</small></span>
           </Link>

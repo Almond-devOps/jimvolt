@@ -31,6 +31,7 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import AccountSettingsPage from './pages/AccountSettingsPage.jsx';
 import Placeholder from './pages/Placeholder.jsx';
 import BachsTestPage from './pages/BachsTestPage.jsx';
+import SellerSlugPage from './pages/SellerSlugPage.jsx';
 
 export default function App() {
   return (
@@ -67,6 +68,8 @@ export default function App() {
           <Route path="/sellers" element={<SellersPage />} />
           <Route path="/sellers/:id" element={<SellerDetailPage />} />
           <Route path="/seller/:slug" element={<SellerStorefrontPage />} />
+          {/* Canonical public profile URLs: /@username */}
+          <Route path="/@:slug" element={<SellerSlugPage />} />
           <Route path="/safety" element={<InformationPage />} />
           <Route path="/contact" element={<InformationPage />} />
           <Route path="/terms" element={<InformationPage />} />
