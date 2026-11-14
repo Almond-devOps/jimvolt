@@ -30,6 +30,18 @@ async function attachImages(rows) {
   )
   const imageMap = new Map(ids.map((id) => [id, []]))
   for (const image of images) imageMap.get(image.advertisement_id)?.push(image.image_url)
+
+  // One grouped query for every seller on the page, so cards can show the seller rating.
+  const sellerIds = [...new Set(rows.map((row) => row.user_id))]
+  const [ratingRows] = await pool.execute(
+    `SELECT seller_id, AVG(score) AS average, COUNT(*) AS count FROM seller_ratings
+     WHERE seller_id IN (${sellerIds.map(() => '?').join(', ')}) GROUP BY seller_id`,
+    sellerIds,
+  )
+  const ratingMap = new Map(ratingRows.map((rating) => [Number(rating.seller_id), {
+    average: Number(rating.average), count: Number(rating.count),
+  }]))
+
   return rows.map(({ user_id, category_id, ...row }) => ({
     ...row,
     category: { id: category_id, name: row.category_name, slug: row.category_slug },
@@ -39,6 +51,7 @@ async function attachImages(rows) {
       phone: row.seller_phone,
       profileImage: row.seller_profile_image,
       is_verified: Boolean(row.seller_is_verified),
+      rating: ratingMap.get(Number(user_id)) || { average: null, count: 0 },
     },
     images: imageMap.get(row.id) || [],
   }))

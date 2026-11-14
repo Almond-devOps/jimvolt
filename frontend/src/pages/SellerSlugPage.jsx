@@ -16,9 +16,16 @@ import ProductCard from '../components/ProductCard.jsx';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
 import ShareProfileDialog from '../components/ShareProfileDialog.jsx';
 import { getSellerProfileBySlug } from '../services/sellerService.js';
+import Placeholder from './Placeholder.jsx';
 
 export default function SellerSlugPage() {
-  const { slug } = useParams();
+  const { handle } = useParams();
+  // Only "/@username" is a profile; any other single segment is an unknown page.
+  if (!handle || !/^@[a-z0-9][a-z0-9-]{1,47}$/i.test(handle)) return <Placeholder />;
+  return <SellerSlugProfile slug={handle.slice(1).toLowerCase()} />;
+}
+
+function SellerSlugProfile({ slug }) {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
