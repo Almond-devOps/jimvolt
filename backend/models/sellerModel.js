@@ -1,4 +1,171 @@
 const { pool } = require('../config/database')
+const { slugify, normalizeUsername, RESERVED_SLUGS } = require('../utils/slugUtils')
+
+// ── Public slug helpers ──────────────────────────────────────────────────────
+
+/**
+ * Look up a seller by their public slug (/@:slug route).
+ * Checks seller_profiles.public_slug first, then falls through to
+ * seller_slug_history so old slugs keep working.
+ */
+async function getPublicProfileBySlug(slug) {
+  // Try current slug
+  const [current] = await pool.execute(
+    `SELECT sp.business_name, sp.slug AS legacy_slug, sp.public_slug,
+            sp.logo_url, sp.description, sp.email, sp.phone, sp.whatsapp,
+            sp.website_url, sp.address, sp.state, sp.city, sp.years_in_business,
+            sp.operating_hours, sp.category_id, c.name AS category_name,
+            u.id AS seller_id, u.full_name AS seller_name, u.profile_image,
+            u.username,
+            (SELECT sv.status = 'verified' FROM seller_verifications sv
+             WHERE sv.user_id = u.id ORDER BY sv.id DESC LIMIT 1) AS is_verified,
+            u.created_at AS member_since
+     FROM seller_profiles sp
+     JOIN users u ON u.id = sp.user_id
+     LEFT JOIN categories c ON c.id = sp.category_id
+     WHERE sp.public_slug = ? LIMIT 1`,
+    [slug],
+  )
+  if (current[0]) return { ...current[0], isHistorical: false }
+
+  // Try historical slug
+  const [hist] = await pool.execute(
+    `SELECT sp.business_name, sp.slug AS legacy_slug, sp.public_slug,
+            sp.logo_url, sp.description, sp.email, sp.phone, sp.whatsapp,
+            sp.website_url, sp.address, sp.state, sp.city, sp.years_in_business,
+            sp.operating_hours, sp.category_id, c.name AS category_name,
+            u.id AS seller_id, u.full_name AS seller_name, u.profile_image,
+            u.username,
+            (SELECT sv.status = 'verified' FROM seller_verifications sv
+             WHERE sv.user_id = u.id ORDER BY sv.id DESC LIMIT 1) AS is_verified,
+            u.created_at AS member_since
+     FROM seller_slug_history ssh
+     JOIN seller_profiles sp ON sp.user_id = ssh.user_id
+     JOIN users u ON u.id = sp.user_id
+     LEFT JOIN categories c ON c.id = sp.category_id
+     WHERE ssh.old_slug = ? LIMIT 1`,
+    [slug],
+  )
+  if (hist[0]) return { ...hist[0], isHistorical: true }
+  return null
+}
+
+/**
+ * Returns the public_slug for a user, or null when none exists.
+ */
+async function getPublicSlugByUserId(userId) {
+  const [rows] = await pool.execute(
+    'SELECT public_slug FROM seller_profiles WHERE user_id = ? LIMIT 1',
+    [userId],
+  )
+  return rows[0]?.public_slug || null
+}
+
+/**
+ * Checks whether a given slug is available for use.
+ * A slug is unavailable if it matches an existing public_slug, a historical slug,
+ * or a reserved word. Pass excludeUserId to skip the caller's own current slug.
+ */
+async function isSlugAvailable(slug, excludeUserId = null) {
+  if (RESERVED_SLUGS.has(slug)) return false
+  const [current] = await pool.execute(
+    excludeUserId
+      ? 'SELECT user_id FROM seller_profiles WHERE public_slug = ? AND user_id <> ? LIMIT 1'
+      : 'SELECT user_id FROM seller_profiles WHERE public_slug = ? LIMIT 1',
+    excludeUserId ? [slug, excludeUserId] : [slug],
+  )
+  if (current.length) return false
+  const [hist] = await pool.execute(
+    'SELECT user_id FROM seller_slug_history WHERE old_slug = ? LIMIT 1',
+    [slug],
+  )
+  if (hist.length) return false
+  return true
+}
+
+/**
+ * Updates a seller's public_slug and users.username.
+ * Archives the old slug to seller_slug_history.
+ * Uses a transaction and row-level locking to prevent concurrent duplicates.
+ * Returns 'ok', 'unavailable', 'same', or 'no_profile'.
+ */
+async function updatePublicSlug(userId, newSlug) {
+  const connection = await pool.getConnection()
+  try {
+    await connection.beginTransaction()
+
+    const [profiles] = await connection.execute(
+      'SELECT id, public_slug FROM seller_profiles WHERE user_id = ? FOR UPDATE',
+      [userId],
+    )
+    if (!profiles.length) {
+      await connection.rollback()
+      return 'no_profile'
+    }
+    const { id: profileId, public_slug: currentSlug } = profiles[0]
+
+    if (currentSlug === newSlug) {
+      await connection.rollback()
+      return 'same'
+    }
+
+    // Check availability while holding the lock
+    const [taken] = await connection.execute(
+      'SELECT user_id FROM seller_profiles WHERE public_slug = ? AND user_id <> ? LIMIT 1',
+      [newSlug, userId],
+    )
+    const [takenHist] = await connection.execute(
+      'SELECT user_id FROM seller_slug_history WHERE old_slug = ? LIMIT 1',
+      [newSlug],
+    )
+    if (taken.length || takenHist.length) {
+      await connection.rollback()
+      return 'unavailable'
+    }
+
+    // Archive old slug
+    if (currentSlug) {
+      await connection.execute(
+        'INSERT IGNORE INTO seller_slug_history (user_id, old_slug) VALUES (?, ?)',
+        [userId, currentSlug],
+      )
+    }
+
+    await connection.execute(
+      'UPDATE seller_profiles SET public_slug = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [newSlug, profileId],
+    )
+    await connection.execute(
+      'UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [newSlug, userId],
+    )
+
+    await connection.commit()
+    return 'ok'
+  } catch (error) {
+    await connection.rollback()
+    throw error
+  } finally {
+    connection.release()
+  }
+}
+
+/**
+ * Looks up a seller by numeric user ID and returns their current public_slug.
+ * Used by the /sellers/:id backward-compat redirect.
+ */
+async function getSlugForUserId(userId) {
+  const [rows] = await pool.execute(
+    `SELECT sp.public_slug, u.full_name
+     FROM seller_profiles sp
+     JOIN users u ON u.id = sp.user_id
+     WHERE sp.user_id = ? LIMIT 1`,
+    [userId],
+  )
+  return rows[0] || null
+}
+
+// ── end of slug helpers ──────────────────────────────────────────────────────
 
 async function getDashboard(userId) {
   const [statsRows] = await pool.execute(
@@ -561,10 +728,14 @@ module.exports = {
   getAnalytics,
   getDashboard,
   getPublicProfile,
+  getPublicProfileBySlug,
   getPublicProfileByUserId,
+  getPublicSlugByUserId,
+  getSlugForUserId,
   getVerification,
   getVerificationDocument,
   getVerificationDetail,
+  isSlugAvailable,
   listNotifications,
   listPendingVerifications,
   listVerifications,
@@ -573,5 +744,6 @@ module.exports = {
   requestVerificationInfo,
   revokeVerification,
   submitVerification,
+  updatePublicSlug,
   updateVerificationDocuments,
 }

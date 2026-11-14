@@ -451,6 +451,102 @@ async function initializeCoreSchema(pool) {
       await pool.query('ALTER TABLE users ADD UNIQUE KEY uq_users_phone (phone)')
     }
   }
+
+  // ── Seller public slugs & username ──────────────────────────────────────────
+  // 1. Add username column to users (the seller's chosen public handle)
+  const [userCols] = await pool.query('SHOW COLUMNS FROM users')
+  const userColNames = new Set(userCols.map((c) => c.Field))
+  if (!userColNames.has('username')) {
+    await pool.query('ALTER TABLE users ADD COLUMN username VARCHAR(50) NULL')
+  }
+  // Unique index on username (NULL values are excluded from uniqueness)
+  const [userIndexes] = await pool.query('SHOW INDEX FROM users')
+  if (!userIndexes.some((i) => i.Key_name === 'uq_users_username')) {
+    await pool.query('ALTER TABLE users ADD UNIQUE KEY uq_users_username (username)')
+  }
+
+  // 2. public_slug column on seller_profiles (the canonical /@:slug handle)
+  const [spCols] = await pool.query('SHOW COLUMNS FROM seller_profiles')
+  const spColNames = new Set(spCols.map((c) => c.Field))
+  if (!spColNames.has('public_slug')) {
+    await pool.query("ALTER TABLE seller_profiles ADD COLUMN public_slug VARCHAR(50) NULL AFTER slug")
+  }
+  const [spIndexes] = await pool.query('SHOW INDEX FROM seller_profiles')
+  if (!spIndexes.some((i) => i.Key_name === 'uq_seller_profiles_public_slug')) {
+    await pool.query('ALTER TABLE seller_profiles ADD UNIQUE KEY uq_seller_profiles_public_slug (public_slug)')
+  }
+
+  // 3. Slug history table – preserves old slugs so shared links keep working
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS seller_slug_history (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      old_slug VARCHAR(50) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_slug_history_slug (old_slug),
+      KEY idx_slug_history_user (user_id),
+      CONSTRAINT fk_slug_history_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    ) ENGINE=InnoDB
+  `)
+
+  // 4. Backfill public_slug for existing seller_profiles that don't have one
+  //    Priority: users.username → slugify(business_name) with uniqueness suffix
+  const slugifyForProfile = (value) =>
+    String(value || 'seller')
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 48) || 'seller'
+
+  const [needSlug] = await pool.query(
+    `SELECT sp.id, sp.user_id, sp.business_name, u.username
+     FROM seller_profiles sp
+     JOIN users u ON u.id = sp.user_id
+     WHERE sp.public_slug IS NULL`,
+  )
+  for (const row of needSlug) {
+    const userBase = row.username
+      ? slugifyForProfile(row.username)
+      : null
+    const nameBase = slugifyForProfile(row.business_name)
+    const candidates = userBase && userBase !== nameBase ? [userBase, nameBase] : [nameBase]
+    let assigned = null
+    outer: for (const candidate of candidates) {
+      for (let suffix = 0; suffix <= 9999; suffix++) {
+        const attempt = suffix === 0 ? candidate : `${candidate.slice(0, 45)}-${suffix}`
+        const [[takenProfile]] = await pool.query(
+          'SELECT 1 FROM seller_profiles WHERE public_slug = ? LIMIT 1',
+          [attempt],
+        )
+        const [[takenHistory]] = await pool.query(
+          'SELECT 1 FROM seller_slug_history WHERE old_slug = ? LIMIT 1',
+          [attempt],
+        )
+        if (!takenProfile && !takenHistory) { assigned = attempt; break outer }
+      }
+    }
+    if (assigned) {
+      await pool.query(
+        'UPDATE seller_profiles SET public_slug = ? WHERE id = ?',
+        [assigned, row.id],
+      )
+      await pool.query(
+        'UPDATE users SET username = ? WHERE id = ? AND username IS NULL',
+        [assigned, row.user_id],
+      )
+    }
+  }
+
+  // 5. Sync users.username from public_slug for any still NULL
+  await pool.query(
+    `UPDATE users u
+     JOIN seller_profiles sp ON sp.user_id = u.id
+     SET u.username = sp.public_slug
+     WHERE u.username IS NULL AND sp.public_slug IS NOT NULL`,
+  )
 }
 
 module.exports = { pool, connectDB, ensureCoreSchema }
