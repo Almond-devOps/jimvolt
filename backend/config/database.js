@@ -36,6 +36,12 @@ if (sslCaSetting) {
   }
 }
 
+// Every Vercel instance gets its own pool, so a pool of 10 times many instances quickly
+// exceeds the managed MySQL limit ("Too many connections"). Keep serverless pools tiny and
+// release idle connections fast; override with DB_CONNECTION_LIMIT if the database allows more.
+const isServerless = process.env.VERCEL === '1'
+const connectionLimit = Number.parseInt(process.env.DB_CONNECTION_LIMIT, 10) || (isServerless ? 2 : 10)
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -46,7 +52,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
-  connectionLimit: 10,
+  connectionLimit,
   queueLimit: 50,
   charset: 'utf8mb4',
   ...(ssl ? { ssl } : {}),
@@ -68,7 +74,17 @@ async function connectDB() {
 }
 
 async function ensureCoreSchema() {
-  return withSchemaLock(pool, process.env.DB_NAME, initializeCoreSchema)
+  try {
+    return await withSchemaLock(pool, process.env.DB_NAME, initializeCoreSchema)
+  } catch (error) {
+    // Another instance is already initializing the schema. Failing here made every request
+    // retry and hold a connection for the full lock wait, which exhausted the database.
+    if (error.code === 'SCHEMA_BUSY') {
+      console.warn('Schema initialization is running on another instance; continuing.')
+      return undefined
+    }
+    throw error
+  }
 }
 
 async function initializeCoreSchema(pool) {

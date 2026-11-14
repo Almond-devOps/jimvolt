@@ -13,7 +13,9 @@ async function withSchemaLock(pool, databaseName, initialize) {
     const [rows] = await connection.query('SELECT GET_LOCK(?, 30) AS acquired', [lockName])
     reusable = true
     locked = Number(rows[0]?.acquired) === 1
-    if (!locked) throw new Error('Database schema initialization is busy. Please retry shortly.')
+    if (!locked) {
+      throw Object.assign(new Error('Database schema initialization is busy. Please retry shortly.'), { code: 'SCHEMA_BUSY' })
+    }
     return await initialize(connection)
   } catch (error) {
     failed = true

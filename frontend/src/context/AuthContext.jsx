@@ -130,10 +130,22 @@ export function AuthProvider({ children }) {
       return () => { active = false; };
     }
 
+    // Serverless hosts (Vercel) cannot keep sockets open, so an unlimited reconnect loop hit the
+    // backend and database every few seconds. Give up after a few tries and poll the unread
+    // count instead.
+    const unreadTimer = window.setInterval(refreshUnread, 60000);
+
     import('socket.io-client')
       .then(({ io }) => {
         if (!active) return;
-        connection = io(socketUrl, { autoConnect: false, auth: { token } });
+        connection = io(socketUrl, {
+          autoConnect: false,
+          auth: { token },
+          reconnectionAttempts: 3,
+          reconnectionDelay: 5000,
+          reconnectionDelayMax: 30000,
+          timeout: 8000,
+        });
         socketRef.current = connection;
         setSocket(connection);
         connection.on('messages:unread_count', ({ count }) => {
@@ -149,6 +161,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       active = false;
+      window.clearInterval(unreadTimer);
       connection?.disconnect();
       if (socketRef.current === connection) socketRef.current = null;
       setSocket((current) => current === connection ? null : current);
