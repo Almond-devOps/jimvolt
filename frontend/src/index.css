@@ -254,13 +254,16 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
   .stats-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
 }
 @media (max-width: 860px) {
-  .nav-row { flex-wrap: wrap; padding-block: 10px; }
+  .nav-row { flex-wrap: wrap; padding-block: 10px; gap: 8px; }
+  .logo { flex: 0 0 auto; }
   .burger { display: block; }
   .search { order: 3; flex-basis: 100%; max-width: none; }
-  .nav-links { display: none; order: 4; flex-basis: 100%; flex-direction: column; align-items: stretch; gap: 4px; padding-bottom: 8px; }
+  .nav-links { display: none; order: 4; flex-basis: 100%; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; padding-bottom: 8px; }
   .nav-links.open { display: flex; }
-  .nav-links a { padding: 10px 4px; }
-  .nav-links .btn { justify-content: center; }
+  .nav-links a { padding: 10px 4px; } 
+  .nav-links a:not(.btn), .nav-links .btn { width: 100%; justify-content: center; }
+  .nav-links .guest-sign-in { margin-left: 0; }
+  .nav-links .btn { min-width: auto; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .promo { flex-direction: column; align-items: flex-start; }
   .dashboard-shell { grid-template-columns: 1fr; }
@@ -273,7 +276,9 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
   .grid, .sellers, .locs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .cats { grid-template-columns: repeat(3, 1fr); padding: 10px; }
   .hero { padding: 48px 0 96px; }
+  .search-loc { min-width: 0; }
   .search-loc select { max-width: 90px; }
+  .search-btn { padding-inline: 12px; }
   .card-body { padding: 10px; } .card-price { font-size: 1rem; }
   .card-foot { flex-direction: column; align-items: flex-start; gap: 4px; }
   .card-foot .seller { flex: none; max-width: 100%; }
