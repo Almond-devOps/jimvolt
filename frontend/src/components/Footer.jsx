@@ -20,6 +20,8 @@ export default function Footer() {
             <li><Link to="/saved">Wishlist</Link></li>
             <li><Link to="/sellers">Verified sellers</Link></li>
             <li><Link to="/safety">Safety tips</Link></li>
+            <li><Link to="/help">Help centre</Link></li>
+            <li><Link to="/pricing">Pricing</Link></li>
             <li><Link to="/contact">Contact us</Link></li>
           </ul>
         </div>
@@ -28,6 +30,7 @@ export default function Footer() {
           <ul>
             <li><Link to="/terms">Terms of use</Link></li>
             <li><Link to="/privacy">Privacy policy</Link></li>
+            <li><Link to="/about">About Jimvolt</Link></li>
             <li><Link to="/refund-policy">Refund policy</Link></li>
           </ul>
         </div>
