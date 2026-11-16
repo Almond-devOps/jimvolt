@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { isValidNigerianPhone } from '../utils/phone.js';
 import { checkUsername } from '../services/sellerService.js';
+import GoogleSignInButton from '../components/GoogleSignInButton.jsx';
 
 const USERNAME_RE = /^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$/;
 
@@ -219,6 +220,9 @@ export default function RegisterPage() {
             {loading ? <><LoaderCircle size={16} className="spin" /> Creating account...</> : 'Create my account'}
           </button>
         </form>
+
+        <div className="auth-divider"><span>or</span></div>
+        <GoogleSignInButton text="signup_with" fallbackLabel="Sign up with Google" onError={(text) => setNotice({ type: 'error', text })} />
 
         <p className="auth-footer">
           Already have an account? <Link to="/login">Sign in</Link>
