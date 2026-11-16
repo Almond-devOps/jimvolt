@@ -1,26 +1,27 @@
 /**
- * Builds the public profile URL for a seller.
- *
- * Pass the seller's slug (e.g. 'solarpowerng') to produce
- * `https://jimvolt-frontend-dev.vercel.app/@solarpowerng`.
- *
- * Passing a numeric string falls back to the legacy path /sellers/:id
- * so old call-sites keep working until they migrate.
+ * Public site origin used for share links. Set VITE_PUBLIC_SITE_URL (for example
+ * https://jimvolt.com) so links always point at the public domain.
  */
-export function getPublicProfileUrl(slugOrId, origin) {
-  if ((typeof slugOrId !== 'string' && typeof slugOrId !== 'number') || !String(slugOrId).trim()) {
-    throw new TypeError('A slug or profile ID is required to build the public profile URL.');
+export function getPublicSiteOrigin(fallbackOrigin) {
+  const configured = import.meta.env?.VITE_PUBLIC_SITE_URL;
+  return String(configured || fallbackOrigin || '').replace(/\/$/, '');
+}
+
+/**
+ * Builds the public profile URL, e.g. https://jimvolt.com/@ada-lovelace.
+ * Throws when the username is missing, because a profile without a username
+ * has no shareable address.
+ */
+export function getPublicProfileUrl(username, origin) {
+  const handle = typeof username === 'string' ? username.trim().toLowerCase() : '';
+  if (!/^[a-z0-9][a-z0-9-]{1,47}$/.test(handle)) {
+    throw new TypeError('A username is required to build the public profile URL.');
   }
-  if (typeof origin !== 'string' || !origin.trim()) {
+  const baseUrl = getPublicSiteOrigin(origin);
+  if (!baseUrl) {
     throw new TypeError('A site origin is required to build the public profile URL.');
   }
-  const baseUrl = origin.replace(/\/$/, '');
-  const value = String(slugOrId).trim();
-  // Pure numeric value → legacy /sellers/:id path
-  if (/^\d+$/.test(value)) {
-    return `${baseUrl}/sellers/${encodeURIComponent(value)}`;
-  }
-  return `${baseUrl}/@${encodeURIComponent(value)}`;
+  return `${baseUrl}/@${encodeURIComponent(handle)}`;
 }
 
 export function getSocialShareUrls(profileUrl, displayName) {

@@ -1,6 +1,6 @@
 const express = require('express')
 const { rateLimit } = require('../utils/rateLimit')
-const { body } = require('express-validator')
+const { body, query } = require('express-validator')
 const authController = require('../controllers/authController')
 const authenticate = require('../middleware/authMiddleware')
 const { asyncHandler } = require('../middleware/errorMiddleware')
@@ -20,6 +20,7 @@ router.post(
   body('fullName').trim().isLength({ min: 2, max: 120 }).withMessage('Full name must be between 2 and 120 characters.'),
   body('email').trim().isEmail().withMessage('Enter a valid email address.').isLength({ max: 254 }),
   body('phone').trim().notEmpty().isLength({ min: 8, max: 32 }).withMessage('Enter a valid Nigerian phone number.'),
+  body('username').optional({ values: 'falsy' }).isString().isLength({ max: 120 }).withMessage('Username is too long.'),
   body('password').isString().isLength({ min: 8, max: 72 }).withMessage('Password must be between 8 and 72 characters.'),
   body('confirmPassword').custom((value, { req }) => {
     if (value !== req.body.password) {
@@ -28,6 +29,28 @@ router.post(
     return true
   }),
   asyncHandler(authController.register),
+)
+
+const usernameLookupLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { message: 'Too many username checks. Please slow down.' },
+})
+
+router.get(
+  '/username/check',
+  usernameLookupLimit,
+  query('username').isString().isLength({ max: 120 }),
+  asyncHandler(authController.checkUsername),
+)
+
+router.put(
+  '/username',
+  authenticate,
+  body('username').isString().isLength({ min: 3, max: 48 }).withMessage('Username must be between 3 and 48 characters.'),
+  asyncHandler(authController.setUsername),
 )
 
 router.post(

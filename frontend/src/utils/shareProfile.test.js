@@ -2,9 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { copyTextToClipboard, getPublicProfileUrl, getSocialShareUrls } from './shareProfile.js';
 
-test('builds a public profile URL from the supplied ID and removes a trailing origin slash', () => {
-  assert.equal(getPublicProfileUrl(42, 'https://jimvolt.example/'), 'https://jimvolt.example/sellers/42');
-  assert.equal(getPublicProfileUrl(907, 'https://jimvolt.example'), 'https://jimvolt.example/sellers/907');
+test('builds a /@username profile URL on the site origin and removes a trailing slash', () => {
+  assert.equal(getPublicProfileUrl('ada-lovelace', 'https://jimvolt.example/'), 'https://jimvolt.example/@ada-lovelace');
+  assert.equal(getPublicProfileUrl('  Ada-Lovelace ', 'https://jimvolt.example'), 'https://jimvolt.example/@ada-lovelace');
+});
+
+test('refuses to build a profile URL without a valid username', () => {
+  assert.throws(() => getPublicProfileUrl(42, 'https://jimvolt.example'), TypeError);
+  assert.throws(() => getPublicProfileUrl('', 'https://jimvolt.example'), TypeError);
+  assert.throws(() => getPublicProfileUrl('-bad', 'https://jimvolt.example'), TypeError);
 });
 
 test('builds encoded share destinations for each supported social platform', () => {

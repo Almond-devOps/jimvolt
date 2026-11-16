@@ -9,10 +9,10 @@ const publicFields = `
   password_reset_token, password_reset_expires_at
 `
 
-async function create({ fullName, email, phone, passwordHash }) {
+async function create({ fullName, email, phone, passwordHash, username = null }) {
   const [result] = await pool.execute(
-    'INSERT INTO users (full_name, email, phone, password) VALUES (?, ?, ?, ?)',
-    [fullName, email, phone || null, passwordHash],
+    'INSERT INTO users (full_name, email, phone, password, username) VALUES (?, ?, ?, ?, ?)',
+    [fullName, email, phone || null, passwordHash, username],
   )
   return findById(result.insertId)
 }
@@ -59,6 +59,43 @@ async function updateProfile(id, { fullName, phone, profileImage }) {
     [fullName, phone || null, profileImage || null, id],
   )
   return findById(id)
+}
+
+/**
+ * True when a username is held by another user, or was a seller's previous
+ * public slug (old /@links must keep pointing at the same person).
+ */
+async function isUsernameTaken(username, exceptUserId = null) {
+  const [current] = await pool.execute(
+    'SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1',
+    [username, exceptUserId ?? 0],
+  )
+  if (current.length) return true
+  const [history] = await pool.execute(
+    'SELECT user_id FROM seller_slug_history WHERE old_slug = ? AND user_id <> ? LIMIT 1',
+    [username, exceptUserId ?? 0],
+  )
+  return history.length > 0
+}
+
+async function setUsername(id, username) {
+  await pool.execute(
+    'UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [username, id],
+  )
+}
+
+/** Public-safe profile for /@username. Never includes email, phone or password. */
+async function findPublicByUsername(username) {
+  const [rows] = await pool.execute(
+    `SELECT u.id, u.full_name, u.username, u.profile_image, u.created_at AS member_since,
+            (SELECT sv.status = 'verified' FROM seller_verifications sv
+             WHERE sv.user_id = u.id ORDER BY sv.id DESC LIMIT 1) AS is_verified
+     FROM users u
+     WHERE u.username = ? AND u.account_status = 'active' LIMIT 1`,
+    [username],
+  )
+  return rows[0] || null
 }
 
 async function updateProfileImage(id, profileImage) {
@@ -259,6 +296,9 @@ async function removeFavorite(userId, advertisementId) {
 }
 
 module.exports = {
+  findPublicByUsername,
+  isUsernameTaken,
+  setUsername,
   addFavorite,
   clearPasswordResetToken,
   create,

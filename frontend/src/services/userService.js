@@ -29,3 +29,5 @@ export const clearRecentlyViewed = () => api.delete('/recently-viewed');
 export const trackRecentlyViewed = (id) => api.post(`/recently-viewed/${id}`);
 export const importRecentlyViewed = (advertisementIds) => api.post('/recently-viewed/import', { advertisementIds });
 export const getMessages = () => api.get('/messages');
+
+export const getPublicProfileByUsername = (username) => api.get(`/users/public/${encodeURIComponent(username)}`);

@@ -5,6 +5,8 @@ const { validationResult } = require('express-validator')
 const userModel = require('../models/userModel')
 const emailService = require('../services/emailService')
 const { isValidNigerianPhone, normalizeNigerianPhone } = require('../utils/phone')
+const { normalizeUsername, suggestUsername, validateUsername } = require('../utils/slugUtils')
+const sellerModel = require('../models/sellerModel')
 
 function checkValidation(req) {
   const errors = validationResult(req)
@@ -78,9 +80,14 @@ async function register(req, res) {
   }
 
   const passwordHash = await bcrypt.hash(password, 12)
+  const username = await chooseUsername(req.body.username, fullName)
 
   try {
-    const user = await userModel.create({ fullName, email, phone, passwordHash })
+    const user = await userModel.create({ fullName, email, phone, passwordHash, username })
+    // The account already exists, so a failed welcome email must not fail registration.
+    emailService.sendWelcomeEmail(user.email, fullName).catch((error) => {
+      console.error('[auth] Welcome email failed:', error.message)
+    })
     return res.status(201).json({ user: sanitizeUser(user), token: createToken(user) })
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -90,6 +97,88 @@ async function register(req, res) {
     }
     throw error
   }
+}
+
+/**
+ * Picks the public username at signup. A username the user typed must be valid
+ * and free. When they left it blank, one is suggested from their name and a
+ * number is appended until a free one is found.
+ */
+async function chooseUsername(requested, fullName) {
+  const typed = String(requested || '').trim()
+  if (typed) {
+    const normalized = normalizeUsername(typed)
+    const problem = validateUsername(normalized)
+    if (problem) {
+      const error = new Error(problem)
+      error.statusCode = 400
+      throw error
+    }
+    if (await userModel.isUsernameTaken(normalized)) {
+      const error = new Error('That username is already taken. Please choose a different one.')
+      error.statusCode = 409
+      throw error
+    }
+    return normalized
+  }
+
+  const base = suggestUsername(fullName)
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    const candidate = attempt === 0 ? base : `${base}-${crypto.randomInt(10, 99999)}`.slice(0, 48)
+    if (!validateUsername(candidate) && !(await userModel.isUsernameTaken(candidate))) return candidate
+  }
+  return `member-${crypto.randomBytes(4).toString('hex')}`
+}
+
+async function checkUsername(req, res) {
+  const normalized = normalizeUsername(String(req.query.username || '').trim())
+  const reason = validateUsername(normalized)
+  if (reason) return res.json({ available: false, username: normalized, reason })
+  const taken = await userModel.isUsernameTaken(normalized, req.user?.id || null)
+  return res.json({
+    available: !taken,
+    username: normalized,
+    reason: taken ? 'That username is already taken.' : null,
+  })
+}
+
+async function setUsername(req, res) {
+  checkValidation(req)
+  const normalized = normalizeUsername(String(req.body.username || '').trim())
+  const problem = validateUsername(normalized)
+  if (problem) {
+    const error = new Error(problem)
+    error.statusCode = 400
+    throw error
+  }
+
+  // Sellers keep their public slug in sync with the username (old slugs are archived).
+  const sellerResult = await sellerModel.updatePublicSlug(req.user.id, normalized)
+  if (sellerResult === 'unavailable') {
+    const error = new Error('That username is already taken. Please choose a different one.')
+    error.statusCode = 409
+    throw error
+  }
+  if (sellerResult === 'no_profile') {
+    if (await userModel.isUsernameTaken(normalized, req.user.id)) {
+      const error = new Error('That username is already taken. Please choose a different one.')
+      error.statusCode = 409
+      throw error
+    }
+    try {
+      await userModel.setUsername(req.user.id, normalized)
+    } catch (error) {
+      if (error.code === 'ER_DUP_ENTRY') {
+        const conflict = new Error('That username is already taken. Please choose a different one.')
+        conflict.statusCode = 409
+        throw conflict
+      }
+      throw error
+    }
+  }
+
+  const user = await userModel.findById(req.user.id)
+  return res.json({ message: 'Username updated.', username: normalized, user: sanitizeUser(user) })
 }
 
 async function login(req, res) {
@@ -148,7 +237,12 @@ async function forgotPassword(req, res) {
     await userModel.setPasswordResetToken(user.id, tokenHash, expiresAt)
 
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${encodeURIComponent(token)}`
-    await emailService.sendPasswordResetEmail(user.email, resetUrl)
+    // Always answer the same way so the response does not reveal which emails have accounts.
+    try {
+      await emailService.sendPasswordResetEmail(user.email, resetUrl)
+    } catch (error) {
+      console.error('[auth] Password reset email failed:', error.message)
+    }
   }
 
   return res.json({ message: 'If an account exists for that email, a password reset link has been sent.' })
@@ -191,4 +285,4 @@ async function logout(req, res) {
   return res.json({ message: 'You have been logged out.' })
 }
 
-module.exports = { adminLogin, forgotPassword, login, logout, me, register, resetPassword, verifyEmail }
+module.exports = { adminLogin, checkUsername, forgotPassword, login, logout, me, register, resetPassword, setUsername, verifyEmail }

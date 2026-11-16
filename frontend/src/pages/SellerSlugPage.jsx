@@ -15,7 +15,9 @@ import EmptyState from '../components/EmptyState.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 import VerifiedBusinessBadge from '../components/VerifiedBusinessBadge.jsx';
 import ShareProfileDialog from '../components/ShareProfileDialog.jsx';
+import PublicUserProfile from '../components/PublicUserProfile.jsx';
 import { getSellerProfileBySlug } from '../services/sellerService.js';
+import { getPublicProfileByUsername } from '../services/userService.js';
 import Placeholder from './Placeholder.jsx';
 
 export default function SellerSlugPage() {
@@ -28,6 +30,7 @@ export default function SellerSlugPage() {
 function SellerSlugProfile({ slug }) {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const [memberData, setMemberData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sharing, setSharing] = useState(false);
@@ -37,6 +40,7 @@ function SellerSlugProfile({ slug }) {
     setLoading(true);
     setError('');
     setData(null);
+    setMemberData(null);
 
     getSellerProfileBySlug(slug)
       .then(({ data: result }) => {
@@ -50,12 +54,13 @@ function SellerSlugProfile({ slug }) {
       })
       .catch((err) => {
         if (!active) return;
-        const status = err.response?.status;
-        if (status === 404) {
-          setError('This seller profile does not exist or has been removed.');
-        } else {
-          setError(err.response?.data?.message || 'Could not load this seller profile.');
+        if (err.response?.status === 404) {
+          // Not a business profile: the handle may belong to a member without a seller profile.
+          return getPublicProfileByUsername(slug)
+            .then(({ data: member }) => { if (active) setMemberData(member); })
+            .catch(() => { if (active) setError('This profile does not exist or has been removed.'); });
         }
+        setError(err.response?.data?.message || 'Could not load this seller profile.');
       })
       .finally(() => { if (active) setLoading(false); });
 
@@ -68,6 +73,10 @@ function SellerSlugProfile({ slug }) {
         <div className="panel loading-card">Loading seller profile…</div>
       </div>
     );
+  }
+
+  if (memberData) {
+    return <PublicUserProfile user={memberData.user} advertisements={memberData.advertisements} />;
   }
 
   if (error || !data) {
