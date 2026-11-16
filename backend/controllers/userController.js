@@ -208,7 +208,19 @@ async function changePassword(req, res) {
   return res.json({ message: 'Password updated successfully.' })
 }
 
+async function getPublicProfileByUsername(req, res) {
+  const user = await userModel.findPublicByUsername(req.params.username.toLowerCase())
+  if (!user) {
+    const error = new Error('Profile not found.')
+    error.statusCode = 404
+    throw error
+  }
+  const advertisements = await adModel.findPublicBySeller(user.id)
+  return res.json({ user, advertisements })
+}
+
 module.exports = {
+  getPublicProfileByUsername,
   addFavorite,
   changePassword,
   getDashboard,

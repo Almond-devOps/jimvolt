@@ -28,9 +28,10 @@ export default function ShareProfileDialog({ profile, onClose }) {
   const [isCopied, setIsCopied] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
-  // Prefer the seller's public slug for the shareable URL; fall back to numeric ID
-  const profileUrl = getPublicProfileUrl(profile.username || profile.public_slug || profile.id, window.location.origin);
-  const socialUrls = getSocialShareUrls(profileUrl, profile.full_name);
+  // Shareable links are always /@username. Without a username there is no link to share yet.
+  const hasUsername = Boolean(profile.username);
+  const profileUrl = hasUsername ? getPublicProfileUrl(profile.username, window.location.origin) : '';
+  const socialUrls = hasUsername ? getSocialShareUrls(profileUrl, profile.full_name) : {};
   const canShareNatively = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   useEffect(() => {
@@ -135,31 +136,40 @@ export default function ShareProfileDialog({ profile, onClose }) {
           />
           <div className="share-profile-identity-copy">
             <h3>{profile.full_name}</h3>
-            <p>{profile.username ? `@${profile.username}` : `Member #${profile.id}`}</p>
+            <p>{hasUsername ? `@${profile.username}` : 'No username yet'}</p>
           </div>
         </div>
 
-        <p id="share-profile-description" className="share-dialog-description">
-          Share this profile with friends and let them connect with you.
-        </p>
+        {hasUsername ? (
+          <p id="share-profile-description" className="share-dialog-description">
+            Share this profile with friends and let them connect with you.
+          </p>
+        ) : (
+          <div className="notice" id="share-profile-description" role="status">
+            Choose a username first, then your profile link will be ready to share.{' '}
+            <a className="link" href="/account-settings">Set a username</a>
+          </div>
+        )}
 
-        <div className="share-profile-url">
-          <label htmlFor="share-profile-url-input">Public profile URL</label>
-          <input
-            id="share-profile-url-input"
-            type="text"
-            value={profileUrl}
-            readOnly
-            onFocus={(event) => event.currentTarget.select()}
-          />
-        </div>
+        {hasUsername && (
+          <div className="share-profile-url">
+            <label htmlFor="share-profile-url-input">Public profile URL</label>
+            <input
+              id="share-profile-url-input"
+              type="text"
+              value={profileUrl}
+              readOnly
+              onFocus={(event) => event.currentTarget.select()}
+            />
+          </div>
+        )}
 
         <div className="share-dialog-actions">
-          <button type="button" className="btn btn-primary share-copy-button" onClick={handleCopy} disabled={isCopying}>
+          <button type="button" className="btn btn-primary share-copy-button" onClick={handleCopy} disabled={isCopying || !hasUsername}>
             <Copy size={17} aria-hidden="true" />
             {isCopied ? 'Copied!' : 'Copy Link'}
           </button>
-          {canShareNatively && (
+          {canShareNatively && hasUsername && (
             <button type="button" className="btn btn-white share-native-button" onClick={handleNativeShare}>
               <Share2 size={17} aria-hidden="true" />
               Share
@@ -167,7 +177,7 @@ export default function ShareProfileDialog({ profile, onClose }) {
           )}
         </div>
 
-        <div className="share-social-section">
+        {hasUsername && <div className="share-social-section">
           <h3>Share with</h3>
           <div className="share-social-grid">
             {socialOptions.map(({ key, label, Icon }) => (
@@ -184,7 +194,7 @@ export default function ShareProfileDialog({ profile, onClose }) {
               </a>
             ))}
           </div>
-        </div>
+        </div>}
 
         {feedback && (
           <p

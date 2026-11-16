@@ -7,13 +7,13 @@ const service = readFileSync(new URL('../src/services/sellerService.js', import.
 test('exposes the username availability endpoint', () => {
   assert.match(
     service,
-    /export const checkUsername = \(username\) => api\.get\('\/seller\/username\/check', \{ params: \{ username \} \}\);/,
+    /export const checkUsername = \(username\) => api\.get\('\/auth\/username\/check', \{ params: \{ username \} \}\);/,
   );
 });
 
 test('exposes the username update endpoint', () => {
   assert.match(
     service,
-    /export const updateUsername = \(username\) => api\.put\('\/seller\/username', \{ username \}\);/,
+    /export const updateUsername = \(username\) => api\.put\('\/auth\/username', \{ username \}\);/,
   );
 });

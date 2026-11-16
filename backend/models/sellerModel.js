@@ -118,7 +118,11 @@ async function updatePublicSlug(userId, newSlug) {
       'SELECT user_id FROM seller_slug_history WHERE old_slug = ? LIMIT 1',
       [newSlug],
     )
-    if (taken.length || takenHist.length) {
+    const [takenByUser] = await connection.execute(
+      'SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1',
+      [newSlug, userId],
+    )
+    if (taken.length || takenHist.length || takenByUser.length) {
       await connection.rollback()
       return 'unavailable'
     }

@@ -8,6 +8,12 @@ const { profileImageUpload } = require('../middleware/profileImageUpload')
 const router = express.Router()
 
 router.get('/sellers', asyncHandler(userController.getVerifiedSellers))
+// Public profile for /@username. Sellers use /api/seller/public/slug/:slug instead.
+router.get(
+  '/public/:username',
+  param('username').matches(/^[a-z0-9][a-z0-9-]{1,47}$/i),
+  asyncHandler(userController.getPublicProfileByUsername),
+)
 router.use(authenticate)
 router.get('/profile', asyncHandler(userController.getProfile))
 router.get('/dashboard', asyncHandler(userController.getDashboard))

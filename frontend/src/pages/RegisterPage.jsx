@@ -1,8 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Eye, EyeOff, LoaderCircle, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { isValidNigerianPhone } from '../utils/phone.js';
+import { checkUsername } from '../services/sellerService.js';
+
+const USERNAME_RE = /^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$/;
+
+// Suggests a public username from the full name, e.g. "Ada Okafor" -> "ada-okafor".
+function suggestUsernameFrom(fullName) {
+  const base = fullName.trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
+  return base.length >= 3 ? base : '';
+}
 
 function getPasswordStrength(password) {
   let score = 0;
@@ -21,7 +31,9 @@ function getPasswordStrength(password) {
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { register } = useAuth();
-  const [form, setForm] = useState({ fullName: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [form, setForm] = useState({ fullName: '', email: '', phone: '', username: '', password: '', confirmPassword: '' });
+  const [usernameEdited, setUsernameEdited] = useState(false);
+  const [usernameState, setUsernameState] = useState({ status: 'idle', message: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,8 +41,38 @@ export default function RegisterPage() {
 
   const strength = useMemo(() => getPasswordStrength(form.password), [form.password]);
 
+  // Until the user edits it, the username follows their name, so signup needs no extra step.
+  const suggested = suggestUsernameFrom(form.fullName);
+  const username = usernameEdited ? form.username.trim().toLowerCase() : suggested;
+
+  useEffect(() => {
+    if (!username) {
+      setUsernameState({ status: 'idle', message: '' });
+      return undefined;
+    }
+    if (!USERNAME_RE.test(username)) {
+      setUsernameState({ status: 'invalid', message: 'Use 3–48 letters, numbers or hyphens. No hyphen at the start or end.' });
+      return undefined;
+    }
+    setUsernameState({ status: 'checking', message: 'Checking availability…' });
+    let active = true;
+    const timer = window.setTimeout(() => {
+      checkUsername(username)
+        .then(({ data }) => {
+          if (!active) return;
+          setUsernameState(data.available
+            ? { status: 'available', message: 'Available' }
+            : { status: 'taken', message: data.reason || 'That username is taken.' });
+        })
+        .catch(() => { if (active) setUsernameState({ status: 'idle', message: '' }); });
+    }, 350);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [username]);
+
   const updateField = (event) => {
-    setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+    const { name, value } = event.target;
+    if (name === 'username') setUsernameEdited(true);
+    setForm((current) => ({ ...current, [name]: value }));
   };
 
   const submit = async (event) => {
@@ -52,6 +94,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (usernameState.status === 'taken' || usernameState.status === 'invalid') {
+      setNotice({ type: 'error', text: usernameState.message || 'Please choose a different username.' });
+      return;
+    }
+
     if (form.password.length < 8) {
       setNotice({ type: 'error', text: 'Password must be at least 8 characters.' });
       return;
@@ -68,6 +115,7 @@ export default function RegisterPage() {
         fullName: form.fullName,
         email: form.email,
         phone: form.phone,
+        username,
         password: form.password,
         confirmPassword: form.confirmPassword,
       });
@@ -113,6 +161,23 @@ export default function RegisterPage() {
             <label className="field">
               <span>Phone number</span>
               <input name="phone" value={form.phone} onChange={updateField} placeholder="0803 123 4567" />
+            </label>
+
+            <label className="field field-wide">
+              <span>Your profile link</span>
+              <input
+                name="username"
+                value={usernameEdited ? form.username : username}
+                onChange={updateField}
+                placeholder="your-name"
+                autoComplete="off"
+                aria-describedby="username-help"
+              />
+              <small id="username-help" className={`username-help username-${usernameState.status}`} aria-live="polite">
+                {username
+                  ? `jimvolt.com/@${username}${usernameState.message ? ` · ${usernameState.message}` : ''}`
+                  : 'Enter your name above, or type a username you like.'}
+              </small>
             </label>
 
             <label className="field field-password">
