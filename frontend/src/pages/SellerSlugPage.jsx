@@ -18,12 +18,12 @@ import ShareProfileDialog from '../components/ShareProfileDialog.jsx';
 import PublicUserProfile from '../components/PublicUserProfile.jsx';
 import { getSellerProfileBySlug } from '../services/sellerService.js';
 import { getPublicProfileByUsername } from '../services/userService.js';
-import Placeholder from './Placeholder.jsx';
+import NotFoundPage from './NotFoundPage.jsx';
 
 export default function SellerSlugPage() {
   const { handle } = useParams();
   // Only "/@username" is a profile; any other single segment is an unknown page.
-  if (!handle || !/^@[a-z0-9][a-z0-9-]{1,47}$/i.test(handle)) return <Placeholder />;
+  if (!handle || !/^@[a-z0-9][a-z0-9-]{1,47}$/i.test(handle)) return <NotFoundPage />;
   return <SellerSlugProfile slug={handle.slice(1).toLowerCase()} />;
 }
 

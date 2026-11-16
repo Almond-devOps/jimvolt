@@ -30,7 +30,8 @@ import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import AccountSettingsPage from './pages/AccountSettingsPage.jsx';
-import Placeholder from './pages/Placeholder.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
+import PricingPage from './pages/PricingPage.jsx';
 import BachsTestPage from './pages/BachsTestPage.jsx';
 import SellerSlugPage from './pages/SellerSlugPage.jsx';
 
@@ -74,6 +75,9 @@ export default function App() {
           {/* React Router cannot match "@" plus a param in one segment, so match the whole
               segment and let the page accept only handles that start with "@". */}
           <Route path="/:handle" element={<SellerSlugPage />} />
+          <Route path="/about" element={<InformationPage />} />
+          <Route path="/help" element={<InformationPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
           <Route path="/safety" element={<InformationPage />} />
           <Route path="/contact" element={<InformationPage />} />
           <Route path="/terms" element={<InformationPage />} />
@@ -95,7 +99,7 @@ export default function App() {
           <Route path="/favourites" element={<FavouritesPage />} />
           <Route path="/recently-viewed" element={<RecentlyViewedPage />} />
           <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
-          <Route path="*" element={<Placeholder />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </AuthProvider>

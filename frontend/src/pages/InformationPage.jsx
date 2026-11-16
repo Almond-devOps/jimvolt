@@ -1,6 +1,55 @@
 import { Link, useLocation } from 'react-router-dom';
 
 const pages = {
+  '/about': {
+    eyebrow: 'About Jimvolt',
+    title: 'A marketplace for renewable energy',
+    intro: 'Jimvolt connects buyers and sellers of solar, batteries, inverters and other renewable energy products and services. Browsing and posting are free. Sellers can pay for promotions that make a listing more visible.',
+    points: [
+      'Anyone can browse approved listings without an account. Create an account to post ads, save favourites, message sellers and rate them.',
+      'Sellers can verify their business so buyers can see that their details have been checked.',
+      'Jimvolt does not hold buyer funds or ship products. Buyers and sellers agree on payment and delivery directly.',
+    ],
+  },
+  '/help': {
+    eyebrow: 'Help centre',
+    title: 'Frequently asked questions',
+    intro: 'Quick answers to common questions about buying, selling and managing your Jimvolt account.',
+    points: [],
+    sections: [
+      {
+        heading: 'Buying',
+        points: [
+          'Search or browse listings, then open a listing to see the details, photos and seller information.',
+          'Message the seller on Jimvolt to ask questions or arrange a viewing. Check the product before you pay.',
+          'Read the safety tips before you send money to anyone: see Safety tips in the footer.',
+        ],
+      },
+      {
+        heading: 'Selling',
+        points: [
+          'Create an account, then choose Post your ad. Listings are shown after review.',
+          'Add clear photos, an accurate description and a fair price. Remove or mark listings as sold when they are no longer available.',
+          'Verify your business from your dashboard to show buyers that your details have been checked.',
+        ],
+      },
+      {
+        heading: 'Promotions',
+        points: [
+          'Promotions make an approved listing more visible for a set number of days. See Pricing for the current packages.',
+          'Refunds for promotion payments follow the Refund policy.',
+        ],
+      },
+      {
+        heading: 'Your account',
+        points: [
+          'Sign in with your email, phone number or username. You can also use Continue with Google.',
+          'Forgot your password? Use Forgot password on the sign-in page. We send a reset link to your email.',
+          'Change your username, email, phone number or password in Account settings.',
+        ],
+      },
+    ],
+  },
   '/safety': {
     eyebrow: 'Buy and sell safely',
     title: 'Marketplace safety tips',
@@ -118,6 +167,7 @@ export default function InformationPage() {
           </section>
         ))}
         {pathname === '/refund-policy' && <p>Questions about a payment? <Link className="link" to="/contact">Contact support</Link>.</p>}
+        {pathname === '/help' && <p>Still need help? <Link className="link" to="/contact">Contact support</Link>.</p>}
         {pathname === '/contact' && (supportEmail
           ? <a className="btn btn-primary" href={`mailto:${supportEmail}?subject=Jimvolt%20marketplace%20support`}>Email {supportEmail}</a>
           : <p className="notice error">Support email is not configured. Set VITE_SUPPORT_EMAIL to publish the support contact.</p>)}
