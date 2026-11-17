@@ -1,3 +1,4 @@
+
 # Jimvolt Renewable Energy Marketplace
 
 Jimvolt is a React marketplace for renewable-energy products and services, backed by an Express API and PostgreSQL. Public visitors can browse approved advertisements; guests can save a wishlist in their browser, and registered users can post listings, message and rate sellers, use an account wishlist, and manage their accounts. Administrators can review submitted advertisements.
