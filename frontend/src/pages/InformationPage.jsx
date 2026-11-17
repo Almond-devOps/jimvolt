@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const pages = {
@@ -148,6 +149,77 @@ const pages = {
   },
 };
 
+// Contact form that submits to Voieform (https://voieform.com). The form key is
+// public by design: it only accepts submissions. Set VITE_VOIEFORM_FORM_KEY.
+const VOIEFORM_FORM_KEY = import.meta.env.VITE_VOIEFORM_FORM_KEY || '';
+
+function ContactForm({ supportEmail }) {
+  const [values, setValues] = useState({ name: '', email: '', message: '' });
+  const [status, setStatus] = useState({ type: null, text: '' });
+  const [sending, setSending] = useState(false);
+
+  if (!VOIEFORM_FORM_KEY) {
+    return supportEmail
+      ? <a className="btn btn-primary" href={`mailto:${supportEmail}?subject=Jimvolt%20marketplace%20support`}>Email {supportEmail}</a>
+      : <p className="notice error">The contact form is not configured. Set VITE_VOIEFORM_FORM_KEY to publish it.</p>;
+  }
+
+  const update = (event) => setValues((current) => ({ ...current, [event.target.name]: event.target.value }));
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!values.name.trim() || !values.email.trim() || !values.message.trim()) {
+      setStatus({ type: 'error', text: 'Please fill in your name, email and message.' });
+      return;
+    }
+    setSending(true);
+    setStatus({ type: null, text: '' });
+    try {
+      const body = new FormData();
+      body.append('name', values.name.trim());
+      body.append('email', values.email.trim());
+      body.append('message', values.message.trim());
+      const response = await fetch(`https://voieform.com/f/${encodeURIComponent(VOIEFORM_FORM_KEY)}`, {
+        method: 'POST',
+        body,
+        headers: { Accept: 'application/json' },
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.ok && result.success) {
+        setValues({ name: '', email: '', message: '' });
+        setStatus({ type: 'success', text: 'Thanks. Your message has been sent and our team will reply by email.' });
+      } else {
+        setStatus({ type: 'error', text: result.error || 'Your message could not be sent. Please try again.' });
+      }
+    } catch {
+      setStatus({ type: 'error', text: 'Network error. Check your connection and try again.' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <form className="contact-form" onSubmit={submit} noValidate>
+      <label className="field">
+        <span>Your name</span>
+        <input name="name" value={values.name} onChange={update} autoComplete="name" required />
+      </label>
+      <label className="field">
+        <span>Email address</span>
+        <input type="email" name="email" value={values.email} onChange={update} autoComplete="email" required />
+      </label>
+      <label className="field">
+        <span>Message</span>
+        <textarea name="message" rows={6} value={values.message} onChange={update} required />
+      </label>
+      {status.text && <div className={`notice ${status.type === 'success' ? 'success' : 'error'}`} role="status">{status.text}</div>}
+      <button className="btn btn-primary" type="submit" disabled={sending}>
+        {sending ? 'Sending…' : 'Send message'}
+      </button>
+    </form>
+  );
+}
+
 export default function InformationPage() {
   const { pathname } = useLocation();
   const page = pages[pathname] || pages['/safety'];
@@ -168,9 +240,7 @@ export default function InformationPage() {
         ))}
         {pathname === '/refund-policy' && <p>Questions about a payment? <Link className="link" to="/contact">Contact support</Link>.</p>}
         {pathname === '/help' && <p>Still need help? <Link className="link" to="/contact">Contact support</Link>.</p>}
-        {pathname === '/contact' && (supportEmail
-          ? <a className="btn btn-primary" href={`mailto:${supportEmail}?subject=Jimvolt%20marketplace%20support`}>Email {supportEmail}</a>
-          : <p className="notice error">Support email is not configured. Set VITE_SUPPORT_EMAIL to publish the support contact.</p>)}
+        {pathname === '/contact' && <ContactForm supportEmail={supportEmail} />}
         <Link className="link" to="/">Return to Jimvolt</Link>
       </article>
     </div>

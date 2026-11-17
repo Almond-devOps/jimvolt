@@ -1363,3 +1363,7 @@ th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: l
   gap: 10px;
   text-decoration: none;
 }
+
+/* Contact form */
+.contact-form { display: grid; gap: 14px; max-width: 560px; margin: 16px 0; }
+.contact-form textarea { width: 100%; min-height: 140px; }
