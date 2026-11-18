@@ -185,11 +185,12 @@ function ContactForm({ supportEmail }) {
         headers: { Accept: 'application/json' },
       });
       const result = await response.json().catch(() => ({}));
-      if (response.ok && result.success) {
+      // Voieform answers 200 when the message is stored. Only an explicit failure counts as an error.
+      if (response.ok && result.success !== false) {
         setValues({ name: '', email: '', message: '' });
         setStatus({ type: 'success', text: 'Thanks. Your message has been sent and our team will reply by email.' });
       } else {
-        setStatus({ type: 'error', text: result.error || 'Your message could not be sent. Please try again.' });
+        setStatus({ type: 'error', text: result.error || result.message || 'Your message could not be sent. Please try again.' });
       }
     } catch {
       setStatus({ type: 'error', text: 'Network error. Check your connection and try again.' });
